@@ -4,7 +4,7 @@ Includes helper functions for easy testing.
 """
 
 import pretty_midi
-from constants import *
+from music_module.constants import *
 import math
 import random as rm
 
@@ -363,5 +363,5 @@ twinkle_retro = twinkle.retrograde()
 twinkle_retro.start = twinkle.get_end_time()
 twinkle.to_instrument(inst)
 twinkle_retro.to_instrument(inst)
-export_to_midi(inst, name="testRetrograde.mid")
+export_to_midi(inst, name="testRetrograde2.mid")
 print(twinkle_inv.melody)

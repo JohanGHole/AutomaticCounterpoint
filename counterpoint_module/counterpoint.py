@@ -23,7 +23,7 @@ TODO: Soft rules of counterpoint
 
 """
 import pretty_midi
-from constants import *
+from music_module.constants import *
 import math
 import random as rm
 
