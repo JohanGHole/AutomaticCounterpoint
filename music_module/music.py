@@ -1,8 +1,7 @@
 """
-Objects related to the music representation.
+Objects related to the musical building blocks
 Includes helper functions for easy testing.
 """
-
 import pretty_midi
 from music_module.constants import *
 import math
@@ -10,15 +9,7 @@ import random as rm
 
 
 def export_to_midi(instrument, tempo=120.0, pm=None, name="test.mid"):
-    """
-    :param instrument: prettyMIDI instrument
-    :param tempo: int,
-    :param pm: prettyMIDI object
-    :param name: name of the generated midi file
-
-    :return: None
-    """
-    name = "generated_midi/" + name
+    name = "generated_midi"+name
     if pm == None:
         pm = pretty_midi.PrettyMIDI(initial_tempo=tempo)
     else:
@@ -73,6 +64,16 @@ class Note:
         note = pretty_midi.Note(velocity=self.velocity, pitch=self.pitch, start=self.start, end=self.end)
         instrument.notes.append(note)
 
+    def to_midi(self, tempo=120, name="music_module/test.mid", program=0, instrument=None, pm=None):
+        if instrument == None:
+            inst = pretty_midi.Instrument(program=program, is_drum=False)
+        else:
+            inst = instrument
+        self.to_instrument(inst)
+        if pm == None:
+            pm = pretty_midi.PrettyMIDI(initial_tempo=tempo)
+        pm.instruments.append(inst)
+        pm.write(name)
 
 
 class Interval:
@@ -363,5 +364,5 @@ twinkle_retro = twinkle.retrograde()
 twinkle_retro.start = twinkle.get_end_time()
 twinkle.to_instrument(inst)
 twinkle_retro.to_instrument(inst)
-export_to_midi(inst, name="testRetrograde2.mid")
+export_to_midi(inst, name="testRetrograde.mid")
 print(twinkle_inv.melody)
