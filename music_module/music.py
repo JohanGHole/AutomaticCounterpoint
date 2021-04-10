@@ -9,7 +9,7 @@ import random as rm
 
 
 def export_to_midi(instrument, tempo=120.0, pm=None, name="test.mid"):
-    name = "generated_midi"+name
+    name = "generated_midi/"+name
     if pm == None:
         pm = pretty_midi.PrettyMIDI(initial_tempo=tempo)
     else:
@@ -266,21 +266,19 @@ class Melody:
         self.note_resolution = 8
         self.start = start
         self.bar_length = bar_length
-        self.melody = None
-        if melody_notes != None:
-            self.melody = melody_notes
+        if melody_notes == None:
+            num_bars = rm.randint(4, 8)
+            mel = [60 for i in range(num_bars)]
+            self.melody = mel
         else:
-            self.generate_melody()
+            self.melody = self.melody = melody_notes
         if isinstance(time, int) or isinstance(time, float):
             self.time = [time for elem in self.melody]
         elif isinstance(time, list):
             self.time = time
 
-    @classmethod
-    def generate_melody(self):
-        length_in_bars = rm.randint(4, 8)
-        mel = [60 for elem in length_in_bars]
-        self.melody = mel
+
+
 
     def get_end_time(self):
         t = self.start
@@ -365,4 +363,4 @@ twinkle_retro.start = twinkle.get_end_time()
 twinkle.to_instrument(inst)
 twinkle_retro.to_instrument(inst)
 export_to_midi(inst, name="testRetrograde.mid")
-print(twinkle_inv.melody)
+#print(twinkle_inv.melody)

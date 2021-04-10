@@ -49,3 +49,18 @@ NAMED_SCALES = {
     "harmonic_minor": (2, 1, 2, 2, 1, 3, 1),
     "chromatic": (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1)
 }
+
+SPECIES = {
+    "first": 1,
+    "second": 2,
+    "third": 3,
+    "fourth": 4,
+    "fifth": 5,
+}
+SPECIES_RHYTHMS = {
+    "first": 8,
+    "second": 4,
+    "third": 2,
+    "fourth": [8,4],
+    "fifth": [8,4,2,6]
+}
