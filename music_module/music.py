@@ -78,8 +78,9 @@ class Note:
 
 class Interval:
     perfect_intervals = [Unison, P5, Octave]
-    dissonant_intervals = [m2, M2, m7, M7, Tritone]
-    consonant_intervals = [m3, M3, P4, P5, m6, M6, Octave]
+    dissonant_intervals = [m2, M2, P4, m7, M7, Tritone]
+    consonant_intervals = [m3, M3, P5, m6, M6, Octave]
+    melodic_consonant_intervals = [m2,M2,m3, M3, P4, P5, m6, M6, Octave]
 
     def __init__(self, arg1=None, arg2=None, arg3=None):
         self.note1 = arg1
@@ -97,6 +98,7 @@ class Interval:
         elif isinstance(arg1, Note) and isinstance(arg2, Note):
             self.note2 = arg2
             self.note1 = arg1
+            self.interval = self.note2.pitch - self.note1.pitch
 
         elif arg3 == None and not isinstance(arg1, int):
             self.interval = self.note2.pitch - self.note1.pitch
@@ -142,6 +144,11 @@ class Interval:
 
     def is_dissonant(self):
         if self.interval in self.dissonant_intervals:
+            return True
+        else:
+            return False
+    def is_melodic_consonant(self):
+        if self.interval in self.melodic_consonant_intervals:
             return True
         else:
             return False

@@ -21,6 +21,7 @@ class Interval:
         elif isinstance(arg1, Note) and isinstance(arg2, Note):
             self.note2 = arg2
             self.note1 = arg1
+            self.interval = self.note2.pitch - self.note1.pitch
 
         elif arg3 == None and not isinstance(arg1, int):
             self.interval = self.note2.pitch - self.note1.pitch
