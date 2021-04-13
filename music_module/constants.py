@@ -64,3 +64,5 @@ SPECIES_RHYTHMS = {
     "fourth": [8,4],
     "fifth": [8,4,2,6]
 }
+
+consonant_melodic_intervals = [m2,M2,m3, M3, P4, P5, m6, Octave]

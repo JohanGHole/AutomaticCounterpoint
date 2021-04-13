@@ -264,11 +264,11 @@ class Scale:
 
 
 class Melody:
-    def __init__(self, key, scale, bar_length, melody_notes=None, time=1.0, start=0, vocal_range=None):
+    def __init__(self, key, scale, bar_length, melody_notes=None, melody_rhythm = 8, start=0, voice_range = None):
         self.key = key
         self.scale_name = scale
-        self.vocal_range = vocal_range
-        self.scale = Scale(key, scale, vocal_range)
+        self.voice_range = voice_range
+        self.scale = Scale(key, scale, voice_range)
         self.scale_pitches = self.scale.get_scale_pitches()
         self.note_resolution = 8
         self.start = start
@@ -279,19 +279,19 @@ class Melody:
             self.melody = mel
         else:
             self.melody = self.melody = melody_notes
-        if isinstance(time, int) or isinstance(time, float):
-            self.time = [time for elem in self.melody]
-        elif isinstance(time, list):
-            self.time = time
+        if isinstance(melody_rhythm, int):
+            self.melody_rhythm = [melody_rhythm for elem in self.melody]
+        elif isinstance(melody_rhythm, list):
+            self.melody_rhythm = melody_rhythm
 
 
 
 
     def get_end_time(self):
         t = self.start
-        for elem in self.time:
+        for elem in self.melody_rhythm:
             t += elem
-        return t
+        return t*self.bar_length / self.note_resolution
         "ANALYSIS AND AUGMENTATION"
 
     def get_note_durations(self):
@@ -316,11 +316,11 @@ class Melody:
         if in_place:
             self.melody = inverted_melody
         else:
-            return Melody(self.key, self.scale_name, self.bar_length, melody_notes=inverted_melody, time=self.time,
-                          start=self.start, vocal_range=self.vocal_range)
+            return Melody(self.key, self.scale_name, self.bar_length, melody_notes=inverted_melody, melody_rhythm=self.melody_rhythm,
+                          start=self.start, voice_range=self.voice_range)
 
     def retrograde(self, in_place=False):
-        timeScale = self.time
+        timeScale = self.melody_rhythm
         retrograded = []
         retrograded_timeScale = []
         for i in range(len(self.melody) - 1, -1, -1):
@@ -328,41 +328,44 @@ class Melody:
             retrograded_timeScale.append(timeScale[i])
         if in_place:
             self.melody = retrograded
-            self.time = retrograded_timeScale
+            self.melody_rhythm = retrograded_timeScale
         else:
             return Melody(self.key, self.scale_name, self.bar_length, melody_notes=retrograded,
-                          time=retrograded_timeScale,
-                          start=self.start, vocal_range=self.vocal_range)
+                          melody_rhythm=retrograded_timeScale,
+                          start=self.start, voice_range=self.voice_range)
 
     """ MIDI SUPPORT """
 
     def to_instrument(self, instrument, time=None, start=None):
         if time == None and start == None:
             t = self.start
-            time = self.time
+            time = self.melody_rhythm
             i = 0
             for pitch in self.melody:
-                note = Note(pitch, start=t, end=t + time[i])
+                dur = time[i]*self.bar_length / self.note_resolution
+                note = Note(pitch, start=t, end=t + dur)
                 note.to_instrument(instrument)
-                t += time[i]
+                t += dur
                 i += 1
-        elif isinstance(time, float) or isinstance(time, int):
+        elif isinstance(time, int):
             t = start
             for pitch in self.melody:
-                note = Note(pitch, start=t, end=t + time)
+                dur = time*self.bar_length / self.note_resolution
+                note = Note(pitch, start=t, end=t + dur)
                 note.to_instrument(instrument)
-                t += time
+                t += dur
         elif isinstance(time, list) and len(time) == len(self.melody):
             t = start
             for i in range(len(self.melody)):
-                note = Note(self.melody[i], start=t, end=t + time[i])
+                dur = time * self.bar_length / self.note_resolution
+                note = Note(self.melody[i], start=t, end=t + dur)
                 note.to_instrument(instrument)
-                t += time[i]
+                t += dur
 
 
-twinkle_time = [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 1, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 1]
-twinkle = Melody("C", "major", 4, [60, 60, 67, 67, 69, 69, 67, 65, 65, 64, 64, 62, 62, 60], time=twinkle_time, start=0,
-                 vocal_range=TENOR_RANGE)
+twinkle_time = [4, 4, 4, 4, 4, 4, 8, 4, 4, 4, 4, 4, 4, 8]
+twinkle = Melody("C", "major", 1, [60, 60, 67, 67, 69, 69, 67, 65, 65, 64, 64, 62, 62, 60], melody_rhythm=twinkle_time, start=0,
+                 voice_range = TENOR_RANGE)
 inst = pretty_midi.Instrument(program=0, is_drum=False, name="inversion test")
 twinkle_inv = twinkle.diatonic_inversion()
 twinkle_retro = twinkle.retrograde()

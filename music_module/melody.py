@@ -1,7 +1,7 @@
 from music_module.scale import *
 import random as rm
 class Melody:
-    def __init__(self, key, scale, bar_length, melody_notes=None, time=1.0, start=0, vocal_range=None):
+    def __init__(self, key, scale, bar_length, melody_notes=None, melody_rhythm = None, start=0, vocal_range=None):
         self.key = key
         self.scale_name = scale
         self.vocal_range = vocal_range
@@ -15,7 +15,7 @@ class Melody:
             self.melody = melody_notes
         else:
             self.generate_melody()
-        if isinstance(time, int) or isinstance(time, float):
+        if isinstance(melody_rhythm, int):
             self.time = [time for elem in self.melody]
         elif isinstance(time, list):
             self.time = time
