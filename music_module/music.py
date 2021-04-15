@@ -336,7 +336,7 @@ class Melody:
 
     """ MIDI SUPPORT """
 
-    def to_instrument(self, instrument, time=None, start=None):
+    def to_instrument(self, instrument, time=None, start = 0):
         if time == None and start == None:
             t = self.start
             time = self.melody_rhythm
@@ -357,7 +357,7 @@ class Melody:
         elif isinstance(time, list) and len(time) == len(self.melody):
             t = start
             for i in range(len(self.melody)):
-                dur = time * self.bar_length / self.note_resolution
+                dur = time[i] * self.bar_length / self.note_resolution
                 note = Note(self.melody[i], start=t, end=t + dur)
                 note.to_instrument(instrument)
                 t += dur

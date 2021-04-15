@@ -1,23 +1,154 @@
 import music_module.music as m
 from music_module.constants import *
+from counterpoint_module.cantus_firmus import *
 import math
-cf = [60,67,69,67,65,64,62,60]
-cf_len = [8,8,8,8,8,8,8,8]
+import pretty_midi
+"""
+TODO: The hard rules of counterpoint (taken from the study of counterpoint):
+    1) For every note of the cantus firmus there is one note in the counterpoint
+    2) diatonic except raised leading tone in minor 
+    3) All harmonies must be consonant (a perfect fourth is considered a dissonance)
+    4) The first interval must be any perfect harmony and the last an octave or unison V
+    5) The last interval must be approached by motion of a minor second upwards (note rule 8 may not be broken)
+    6) All perfect intervals must be approached by contrary motion
+    7) motion can proceed by step or leap but steps and leaps of augmented and diminished intervals and leaps of any seventh
+       are forbidden. Leaps greater than a sixth are forbidden except for leaps of an octave which should be rare
+    8) The counterpoint may not outline an interval of a tritone or seventh except for an augmented fourth that is fully,
+       stepwise outlined and precedes an inwards step
+None of the abovementioned rules may be broken
+TODO: Soft rules of counterpoint
+    1) No note may be repeated successively more than three times V - Changed to 2 times! V
+    2) No two successive leaps in the same direction may total more than an octave V
+    3) while ascending, in the case of two successive steps or leaps, the larger one should precede the smaller; while descending the smaller
+       should precede the larger V
+    4) No successive leaps in opposite directions; leaps should be followed by inward, stepwise motion V
+    5) The same harmonic interval should not repeat more than three times
+    6) There should be no more than two successive leaps
+    7) The range of the counterpoint should be limited to a tenth and all notes in the chosen mode should appear in the counterpoint
 
+"""
+cf = [60,67,69,67,65,64,62,60]
+cf = [60,62,64,65,67,69,67,65,64,62,60]
+cf_len = [8]*len(cf)
+tempo = 120.0
+cf = Cantus_Firmus(key = "C", scale = "major", bar_length = 1, melody_notes = cf, melody_rhythm = cf_len,voice_range = RANGES[ALTO] )
 class FirstSpecies:
-    def __init__(self,cf_notes,cf_rhythm, key = "C",scaleType = "major",cpt_position = "above", voice = SOPRANO):
-        self.key = key
-        self.scaleType = scaleType
-        self.cpt_position = cpt_position
-        self.cf_notes = cf_notes
-        self.cf_rhythm = cf_rhythm
-        self.voice = voice
-        self.scale = m.Scale(key, scaleType, RANGES[voice])
-        self.scale = self.scale.get_scale_pitches()
-test = FirstSpecies(cf,cf_len)
-print(test.scale)
+    melodic_intervals = [Unison, P4,P5,P8,m2,M2,m3,M3,m6]
+    harmonic_consonances = [m3,M3,P5,m6,M6,P8,P8+m3,P8+M3]
+    def __init__(self,cf,ctp_position = "above"):
+        self.key = cf.key
+        self.cf = cf
+        self.melody_rhythm = cf.melody_rhythm
+        self.scale_name = cf.scale_name
+        self.ctp_position = ctp_position
+        self.cf_notes = cf.melody
+        print("cf notes: ",self.cf_notes)
+        self.cf_rhythm = cf.melody_rhythm
+        if ctp_position == "above":
+            try:
+                self.voice_range = RANGES[RANGES.index(cf.voice_range)+1]
+            except:
+                print("ERROR. the Cantus Firmus is in the top voice. Writing ctp below instead..")
+                self.voice_range = RANGES[RANGES.index(cf.voice_range)-1]
+        else:
+            try:
+                self.voice_range = RANGES[RANGES.index(cf.voice_range)-1]
+            except:
+                print("ERROR. the Cantus Firmus is in the top voice. Writing ctp below instead..")
+                self.voice_range = RANGES[RANGES.index(cf.voice_range)-1]
+        self.scale = m.Scale(self.key,self.scale_name, self.voice_range)
+        self.scale_pitches = self.scale.get_scale_pitches()
+        self.ctp_notes = [None for elem in self.cf_notes]
+        self.ctp_tonic = cf.start_note+(RANGES.index(self.voice_range)-RANGES.index(cf.voice_range))*Octave
+        self.cf_tonic = cf.start_note
+        self.harmonic_progression = [None for i in range(len(self.cf_notes))]
+        self.melodic_progression = [None for i in range(len(self.cf_notes)-1)]
+        self.cf_direction = [sign(self.cf_notes[i]-self.cf_notes[i-1]) for i in range(1,len(self.cf_notes))]
+        self.start_note, self.end_note, self.penultimate_note = self._initialize_cpt()
+        print(self.cf_direction)
+        self.ctp_melody = None
+        
+    def _best_pick(self,prev_note,harm_poss):
+        next_note = harm_poss[0]
+        score = 99
+        for elem in harm_poss:
+            if abs(prev_note-elem) < score:
+                next_note = elem
+                score = abs(prev_note-elem)
+        return next_note
+    def _best_possibility(self,prev_note):
+        harm_poss = self._get_harmonic_possibilities(prev_note)
+        next_note = self._best_pick(prev_note,harm_poss)
+        return next_note
+    def _get_harmonic_possibilities(self,cf_note):
+        harm_poss = []
+        return harm_poss
+
+    def _initialize_cpt(self):
+        start_note = self._start_note()
+        end_note = self._end_note()
+        penultimate_note = self._penultimate_note(end_note)
+        return start_note,end_note,penultimate_note
+
+    def _start_note(self):
+        if self.ctp_position == "above":
+            return rm.choice([self.cf_tonic,self.cf_tonic+P5,self.cf_tonic+Octave])
+        else:
+            return self.cf_tonic-Octave
+    def _end_note(self):
+        if self.ctp_position == "above":
+            return rm.choice([self.cf_tonic,self.cf_tonic+Octave])
+        else:
+            return rm.choice([self.cf_tonic,self.cf_tonic-Octave])
+
+    def _penultimate_note(self,ctp_end):
+        if self.cf_direction[-1] == 1.0:
+            penultimate = self.scale_pitches[self.scale_pitches.index(ctp_end)+1]
+        else:
+            penultimate = self.scale_pitches[self.scale_pitches.index(ctp_end) -1]
+        if self.scale_name == "minor" and self.cf_direction[-1] == -1.0:
+            penultimate += 1
+        return penultimate
+
+    def draft_counterpoint(self):
+        for i in range(len(self.cf_notes)):
+            if i == 0:
+                self.ctp_notes[i] = self.start_note
+            elif i == len(self.cf_notes)-1:
+                self.ctp_notes[i] = self.end_note
+            elif i == len(self.cf_notes)-2:
+                self.ctp_notes[i] = self.penultimate_note
+            else:
+                self.ctp_notes[i] = self._best_possibility(self.cf_notes[i])
+
+    def construct_ctp_melody(self,start = 0):
+        self.ctp_melody = m.Melody(self.key,self.scale,self.cf.bar_length,melody_notes=self.ctp_notes,melody_rhythm = self.melody_rhythm,start = start,voice_range = self.voice_range)
+        return self.ctp_melody
+test = FirstSpecies(cf,ctp_position = "above")
+test.draft_counterpoint()
+ctp_melody = test.construct_ctp_melody(start = 0)
+print("cf melody",cf.melody)
+print("counterp mel: ",ctp_melody.melody)
+print(test.ctp_notes)
+def test(cf,ctp):
+    inst = pretty_midi.Instrument(program=0,is_drum = False, name="counterpoint")
+    #inst2 = pretty_midi.Instrument(program = 0, is_drum = False, name= "cantus firmus")
+    cf.to_instrument(inst,start = 0, time = cf.melody_rhythm)
+    ctp.to_instrument(inst,start = 0, time = cf.melody_rhythm)
+    m.export_to_midi(inst,tempo = 120.0, name = "first_species/test1.mid")
+test(cf,ctp_melody)
 """
 Initialize()
+draft counterpoint 
+pick note
+check outlines, leaps, ...
+
+Local_constraints()
+_get_melodic_possibilities()
+_get_harmonic_possibilities()
+^ pick common notes
+
+
 BackTrack()
 BestPossibility()
 

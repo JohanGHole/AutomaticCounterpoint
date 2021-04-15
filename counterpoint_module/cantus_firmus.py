@@ -33,7 +33,8 @@ class Cantus_Firmus(m.Melody):
     consonant_intervals = [m2,M2,m3, M3, P4, P5, m6, Octave]
 
     def __init__(self,key, scale, bar_length, melody_notes=None, melody_rhythm = 8, start=0, voice_range = RANGES[ALTO]):
-        super(Cantus_Firmus, self).__init__(key, scale, bar_length, melody_notes=None, melody_rhythm = 8, start=0, voice_range = RANGES[ALTO])
+        super(Cantus_Firmus, self).__init__(key, scale, bar_length, melody_notes= melody_notes, melody_rhythm = melody_rhythm,
+                                            start = start, voice_range = voice_range)
         self.start_note = self._start_note()
         self.end_note = self.start_note
         self.penultimate_note = self._penultimate_note()
@@ -283,14 +284,14 @@ class Cantus_Firmus(m.Melody):
 
         self.melody = cf_shell
 
-
+"""
 for i in range(1):
     cf = Cantus_Firmus(KEY_NAMES[i],"major",bar_length=8,voice_range=RANGES[TENOR])
     cf.generate_cf()
     inst = pretty_midi.Instrument(program=pretty_midi.instrument_name_to_program("violin"), is_drum=False, name="Cf")
     cf.to_instrument(inst, time=1, start=0)
     m.export_to_midi(inst, tempo=120.0, name="cantus_firmus/" + cf.key + "_v3.mid")
-"""
+
 start and stop notes - must be the tonic (key) in valid range. 
 
 """
