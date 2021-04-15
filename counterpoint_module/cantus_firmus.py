@@ -2,6 +2,10 @@ import music_module.music as m
 import pretty_midi
 from music_module.constants import *
 import random as rm
+import math
+def sign(x):
+    return math.copysign(1, x)
+
 """
 This sub-module contains methods for generating a cantus firmus.
 
@@ -100,13 +104,13 @@ class Cantus_Firmus(m.Melody):
         return poss
 
     def _is_step(self,note,prev_note):
-        if abs(prev_note-note) is m2 or M2:
+        if abs(prev_note-note) in [m2, M2]:
             return True
         else:
             return False
 
     def _is_small_leap(self,note, prev_note):
-        if abs(prev_note-note) is m3 or M3:
+        if abs(prev_note-note) in [m3, M3]:
             return True
         else:
             return False
@@ -183,31 +187,109 @@ class Cantus_Firmus(m.Melody):
                 mel_cons.remove(notes)
         return mel_cons
 
+    def _get_best_local_option(self,prev_note,prev_prev_note):
+        # returns the best local option based on score
+        if prev_prev_note is None:
+            # return step or small leap
+            print("no prev_prev_note ")
+        if self._is_large_leap(prev_note,prev_prev_note):
+            # Resolve by step in opposite direction
+            print("large leap")
+
+    def _group_consonances(self, prev_note, mel_cons):
+        steps = []
+        small_leaps = []
+        large_leaps = []
+        for note in mel_cons:
+            if self._is_step(note,prev_note):
+                steps.append(note)
+            elif self._is_small_leap(note,prev_note):
+                small_leaps.append(note)
+            elif self._is_large_leap(note,prev_note):
+                large_leaps.append(prev_note)
+        return steps,small_leaps,large_leaps
+
+    def _pre_climax_contour(self,cf_shell,climax):
+        tonic = cf_shell[0]
+        leading_tone = tonic+M7
+        num_notes = cf_shell.index(climax)-cf_shell.index(tonic)
+        diatonic_steps = self.scale_pitches.index(climax)-self.scale_pitches.index(tonic)
+        print("diatonic steps: ",diatonic_steps)
+        print("num notes: ",num_notes)
+        max_contour_sum = diatonic_steps
+        contour = []
+        for i in range(num_notes):
+            if sum(contour) < max_contour_sum-1:
+                contour.append(1)
+            else:
+                contour.append(-1)
+            print("sum contour: ",sum(contour))
+            if i == num_notes -1 and sum(contour) < max_contour_sum:
+                contour[i] += max_contour_sum-sum(contour)
+        step_sum = sum(contour)
+        small_leaps_needed = step_sum - diatonic_steps
+        for i in range(abs(small_leaps_needed)):
+            for j in range(len(contour)):
+                if sign(contour[i]) == sign(small_leaps_needed):
+                    if sum(contour[:len(contour)-2])+1 == diatonic_steps:
+                        print("climax is reached before the designated time")
+                    else:
+                        contour[i] += small_leaps_needed
+                    break
+        print(contour)
+        print("leaps needed: ",small_leaps_needed)
+        for i in range(1,cf_shell.index(climax)):
+            prev_note_idx = self.scale_pitches.index(cf_shell[i-1])
+            cf_shell[i] = self.scale_pitches[prev_note_idx+contour[i-1]]
+
+        # ascending line, descending or both?
+        # possible outline: in diatonic steps from tonic. +1,+1,+2,-1,+1,+1,+1
+        # sum outline = diatonic_steps
+        # the sum must be the number of diatonic steps
+        # the penultimate sum can never be higher than diatonic_steps -1
+        # small_leap upwards possible?
+        # small_leap downwards possible?
+        #
+
 
     def generate_cf(self):
-        cf_shell, poss, climax_idx, climax = self._initialize_cf()
+        #cf_shell, poss, climax_idx, climax = self._initialize_cf()
+        cf_shell = [60, None, None, None, None, 67, None, None, 62,60]
+        poss = self._possible_notes()
+        climax = 67
+        climax_idx = 5
+        cf_shell[climax_idx] = climax
+        poss.remove(climax)
         print("whole voice range: ",self.scale_pitches)
         print("possible notes: ",self.scale_pitches)
-        print("The shell: ",cf_shell)
-        prev_prev_note = None
-        prev_note = cf_shell[0]
-        for i in range(1,len(cf_shell)-2):
-            test = self._get_melodic_consonances(cf_shell[i-1],self.scale_pitches,climax)
-            print("test: ",test)
+        print("The shell: ", cf_shell)
+        self._pre_climax_contour(cf_shell,climax)
+        print("new shell: ",cf_shell)
+        for i in range(climax_idx, len(cf_shell) - 2):
+            prev_note = cf_shell[i-1]
+            mel_cons = self._get_melodic_consonances(prev_note, self.scale_pitches, climax)
+            steps, small_leaps, large_leaps = self._group_consonances(prev_note,mel_cons)
+            print("test: ", mel_cons)
+            print("steps: ",steps)
+            print("small leaps: ",small_leaps)
             if i != climax_idx:
-                next_note = rm.choice(test)
-                if prev_note
+                if rm.randint(1,100) > 25:
+                    next_note = rm.choice(steps)
+                else:
+                    next_note = rm.choice(small_leaps)
                 cf_shell[i] = next_note
+                prev_note = next_note
             print("Current shell: ", cf_shell)
+
         self.melody = cf_shell
 
 
 for i in range(1):
-    cf = Cantus_Firmus(KEY_NAMES[i],"major",bar_length=4,voice_range=RANGES[TENOR])
+    cf = Cantus_Firmus(KEY_NAMES[i],"major",bar_length=8,voice_range=RANGES[TENOR])
     cf.generate_cf()
-    inst = pretty_midi.Instrument(program=0, is_drum=False, name="Cf")
+    inst = pretty_midi.Instrument(program=pretty_midi.instrument_name_to_program("violin"), is_drum=False, name="Cf")
     cf.to_instrument(inst, time=1, start=0)
-    m.export_to_midi(inst, tempo=120.0, name="cantus_firmus/" + cf.key + "_v2.mid")
+    m.export_to_midi(inst, tempo=120.0, name="cantus_firmus/" + cf.key + "_v3.mid")
 """
 start and stop notes - must be the tonic (key) in valid range. 
 
