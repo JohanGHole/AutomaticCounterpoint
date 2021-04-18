@@ -32,12 +32,17 @@ class Cantus_Firmus(m.Melody):
     dissonant_intervals = [m2, M2, m7, M7, Tritone]
     consonant_intervals = [m2,M2,m3, M3, P4, P5, m6, Octave]
 
-    def __init__(self,key, scale, bar_length, melody_notes=None, melody_rhythm = 8, start=0, voice_range = RANGES[ALTO]):
+    def __init__(self,key, scale, bar_length, melody_notes=None, melody_rhythm = None, start=0, voice_range = RANGES[ALTO]):
         super(Cantus_Firmus, self).__init__(key, scale, bar_length, melody_notes= melody_notes, melody_rhythm = melody_rhythm,
                                             start = start, voice_range = voice_range)
         self.start_note = self._start_note()
         self.end_note = self.start_note
         self.penultimate_note = self._penultimate_note()
+        self.length = self._generate_length()
+        if melody_rhythm != None:
+            self.melody_rhythm = melody_rhythm
+        else:
+            self.melody_rhythm = [8]*self.length
     def _start_note(self):
         """
 
@@ -148,7 +153,7 @@ class Cantus_Firmus(m.Melody):
         start_note = self.start_note
         end_note = self.end_note
         penultimate_note = self._penultimate_note()
-        length = self._generate_length()
+        length = self.length
         cf_shell = [None for i in range(length)]
         cf_shell[0] = start_note
         cf_shell[-1] = end_note
@@ -254,13 +259,15 @@ class Cantus_Firmus(m.Melody):
 
 
     def generate_cf(self):
-        #cf_shell, poss, climax_idx, climax = self._initialize_cf()
+        cf_shell, poss, climax_idx, climax = self._initialize_cf()
+        """
         cf_shell = [60, None, None, None, None, 67, None, None, 62,60]
         poss = self._possible_notes()
         climax = 67
         climax_idx = 5
         cf_shell[climax_idx] = climax
         poss.remove(climax)
+        """
         print("whole voice range: ",self.scale_pitches)
         print("possible notes: ",self.scale_pitches)
         print("The shell: ", cf_shell)
