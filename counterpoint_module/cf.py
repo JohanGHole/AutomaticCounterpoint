@@ -3,6 +3,7 @@ import pretty_midi
 from music_module.constants import *
 import random as rm
 import math
+from time import time
 def sign(x):
     return math.copysign(1, x)
 
@@ -38,14 +39,14 @@ class Cantus_Firmus(m.Melody):
         self.tonics = []
         self.start_note = self._start_note()
         self.end_note = self.start_note
-        self.leading_tones = [self.scale_pitches[self.scale_pitches.index(tonic)-1] for tonic in self.tonics]
+        self.leading_tones = self._get_leading_tones()
         self.penultimate_note = self._penultimate_note()
         self.length = self._generate_length()
         if melody_rhythm != None:
             self.melody_rhythm = melody_rhythm
         else:
             self.melody_rhythm = [8]*self.length
-
+        self.cf_errors = []
     def _start_note(self):
         """
 
@@ -62,14 +63,14 @@ class Cantus_Firmus(m.Melody):
             if pitches % Octave == root_idx:
                 possible_start_notes.append(pitches)
         self.tonics = possible_start_notes
-        start_note_eval = []
-
+        print("tonics: ",self.tonics)
+        """
         for notes in possible_start_notes:
-            start_note_eval.append(abs(v_range.index(notes) / len(v_range)-0.5)) # eval based on most median possibility since this gives maximum "wiggle room"
-        start_note_score = min(start_note_eval)
-        start_note = possible_start_notes[(start_note_eval.index(start_note_score))]
-
-        return start_note
+            if self.scale_pitches.index(notes) <= 1:
+                possible_start_notes.remove(notes)
+        """
+        print("tonics after: ",self.tonics)
+        return possible_start_notes[0]
 
     def _penultimate_note(self):
         """ The last note can be approached from above or below.
@@ -80,7 +81,12 @@ class Cantus_Firmus(m.Melody):
         weights = [0.1,0.9] # it is more common that the penultimate note is the supertonic than leading tone
         penultimate_note = rm.choices([leading_tone,super_tonic],weights)[0]
         return penultimate_note
-
+    def _get_leading_tones(self):
+        if self.scale_name == "minor":
+            leading_tone = self.start_note - 2
+        else:
+            leading_tone = self.start_note - 1
+        return [leading_tone, leading_tone+Octave]
     def _generate_length(self):
         """
         Generates the number of bars for the cantus firmus. Length between 8 and 16 bars, with 12 being most common.
@@ -118,16 +124,17 @@ class Cantus_Firmus(m.Melody):
     def _resolved_leading_tone(self,cf_shell):
         for leading_tone in self.leading_tones:
             if leading_tone in cf_shell and cf_shell[cf_shell.index(leading_tone)+1] not in self.tonics:
-                print("Leading tone not properly resolved")
+                self.cf_errors.append("Leading tone not properly resolved")
                 return 150
         return 0
 
     def _check_dissonant_intervals(self,cf_shell):
         for i in range(len(cf_shell)-1):
             if cf_shell[i+1] -cf_shell[i] in self.dissonant_intervals:
-                print("dissonant interval")
+                self.cf_errors.append("dissonant interval")
                 return 150
         return 0
+
     def _global_leap_score(self,cf_shell):
         score = 0
         num_large_leaps = 0
@@ -136,43 +143,50 @@ class Cantus_Firmus(m.Melody):
                 num_large_leaps += 1
                 if abs(cf_shell[i]-cf_shell[i+1]) == Octave:
                     # small penalty for octave leap
-                    print("penalty for octave leap")
-                    score += 50
+                    self.cf_errors.append("penalty for octave leap")
+                    score += 75
                 # Check consecutive leaps first
                 elif self._is_small_leap(cf_shell[i+1],cf_shell[i+2]):
                     score +=50
-                    print("large conescutive leaps")
+                    self.cf_errors.append("large conescutive leaps")
+                elif self._is_large_leap(cf_shell[i+1],cf_shell[i+2]) and sign(cf_shell[i+1]-cf_shell[i]) != sign(cf_shell[i+2]-cf_shell[i+1]):
+                    score += 100
+                    self.cf_errors.append("Large leaps in opposite direction")
                 elif self._is_step(cf_shell[i+1],cf_shell[i+2]) and sign(cf_shell[i+1]-cf_shell[i]) == sign(cf_shell[i+2]-cf_shell[i+1]):
-                    score += 50
-                    print("A leap is not properly recovered")
-        if num_large_leaps >= int(self.length /2) - 1:
+                    score += 100
+                    self.cf_errors.append("A leap is not properly recovered")
+        if num_large_leaps >= int(self.length /2) - 2:
             score += 150
         return score, num_large_leaps
 
     def _repeated_notes(self,cf_shell):
         for notes in set(cf_shell):
             if cf_shell.count(notes) > 4:
+                self.cf_errors.append("Too many note repetitions")
                 return 100
             else:
                 return 0
+
     def _valid_range(self,cf_shell):
         if abs(max(cf_shell)-min(cf_shell)) > Octave+M3:
-            print("Range too wide")
+            self.cf_errors.append("Range too wide")
             return 150
         else:
-            print("VALID RANGE")
             return 0
     def _repeated_motifs(self,cf_shell):
         paired_notes = []
         score = 0
         for i in range(len(cf_shell)-1):
             if cf_shell[i] == cf_shell[i+1]:
-                print("repeated note")
+                self.cf_errors.append("repeated note")
+                score += 50
+            if cf_shell[i] == cf_shell[0] and i != 0:
+                self.cf_errors.append("tonic in wrong position")
                 score += 50
             paired_notes.append([cf_shell[i],cf_shell[i+1]])
         for pairs in paired_notes:
             if paired_notes.count(pairs) > 1:
-                print("repeated motives")
+                self.cf_errors.append("repeated motives")
                 score += 100
         return score
     def _global_penalty(self,cf_shell):
@@ -191,7 +205,6 @@ class Cantus_Firmus(m.Melody):
         global_penalty += penalty
         penalty = self._check_dissonant_intervals(cf_shell)
         global_penalty += penalty
-        print("total score: ", global_penalty)
         return global_penalty
 
     def _local_penalty(self,note,prev_note):
@@ -229,12 +242,14 @@ class Cantus_Firmus(m.Melody):
         return mel_cons
 
     def generate_cf(self):
+        t0 = time()
         total_penalty = math.inf
         iteration = 0
         while total_penalty > 0:
             total_penalty = 0
             cf_shell = self._initialize_cf() # initialized randomly
             for i in range(1,len(cf_shell)-2):
+                self.cf_errors = []
                 local_max = math.inf
                 cf_draft = cf_shell.copy()
                 mel_cons = self._get_melodic_consonances(cf_shell[i-1])
@@ -246,15 +261,15 @@ class Cantus_Firmus(m.Melody):
                         local_max = local_penalty
                         best_choice = notes
                 cf_shell[i] = best_choice
-                print("local max: ",local_max)
-                # test
+            self.cf_errors = []
             total_penalty += self._global_penalty(cf_shell)
             iteration += 1
             print("iter: ",iteration)
-            print("total penalty: ",total_penalty)
-
+        print("errors: ",self.cf_errors)
         print(cf_shell)
         self.melody = cf_shell
+        t1 = time()
+        print("total comp time: ",str((t1-t0)*1000)+"ms")
 
 """
 for i in range(1):

@@ -27,14 +27,7 @@ TODO: Soft rules of counterpoint
     7) The range of the counterpoint should be limited to a tenth and all notes in the chosen mode should appear in the counterpoint
 
 """
-cf = [60,67,69,67,65,64,62,60]
-cf = [60,62,64,65,67,69,67,65,64,62,60]
-#cf = [62,69,65,64,62,65,64,62,60,64,62]
-cf_len = [8]*len(cf)
-tempo = 120.0
-#cf = Cantus_Firmus(key = "C", scale = "major", bar_length = 1, melody_notes = cf, melody_rhythm = cf_len,voice_range = RANGES[TENOR] )
-#cf = Cantus_Firmus(key = "E", scale = "minor",bar_length = 2, voice_range = RANGES[TENOR])
-#cf.generate_cf()
+
 
 class FirstSpecies:
     melodic_intervals = [Unison,m2,M2,m3,M3,P4,P5,P8,-m2,-M2,-m3,-M3,-P4,-P5,-P8]
@@ -47,7 +40,6 @@ class FirstSpecies:
         self.scale_name = cf.scale_name
         self.ctp_position = ctp_position
         self.cf_notes = cf.melody
-        print("cf notes: ",self.cf_notes)
         self.cf_rhythm = cf.melody_rhythm
         if ctp_position == "above":
             try:
@@ -63,39 +55,38 @@ class FirstSpecies:
                 self.voice_range = RANGES[RANGES.index(cf.voice_range)+1]
         self.scale = m.Scale(self.key,self.scale_name, self.voice_range)
         self.scale_pitches = self.scale.get_scale_pitches()
-        print("scale: ", self.scale_pitches)
         self.ctp_notes = [None for elem in self.cf_notes]
         self.ctp_tonic = cf.start_note+(RANGES.index(self.voice_range)-RANGES.index(cf.voice_range))*Octave
         self.cf_tonic = cf.start_note
         self.cf_direction = [sign(self.cf_notes[i]-self.cf_notes[i-1]) for i in range(1,len(self.cf_notes))]
         self.ctp_notes,self.poss = self._initialize_cpt()
-        print(self.cf_direction)
         self.ctp_melody = None
+        self.ctp_errors = []
 
     """ HELP FUNCTIONS FOR INITIALIZING COUNTERPOINT"""
     def _start_notes(self):
         if self.ctp_position == "above":
-            return [self.cf_tonic,self.cf_tonic+P5,self.cf_tonic+Octave]
+            return [self.cf_tonic+P5,self.cf_tonic+Octave]#[self.cf_tonic,self.cf_tonic+P5,self.cf_tonic+Octave]
         else:
             return [self.cf_tonic-Octave]
 
     def _end_notes(self):
         if self.ctp_position == "above":
-            return [self.cf_tonic,self.cf_tonic+Octave]
+            return [self.cf_tonic+Octave]#[self.cf_tonic,self.cf_tonic+Octave]
         else:
-            return [self.cf_tonic,self.cf_tonic-Octave]
+            return [self.cf_tonic-Octave]#[self.cf_tonic,self.cf_tonic-Octave]
 
-    def _penultimate_notes(self,cf_end):
+    def _penultimate_notes(self,cf_end): # Bug in penultimate
         if self.ctp_position == "above":
             s = 1
         else:
             s = -1
         if self.cf_direction[-1] == 1.0:
-            penultimate = self.scale_pitches[self.scale_pitches.index(cf_end)+1]
+            penultimate = cf_end + 2
         else:
-            penultimate = self.scale_pitches[self.scale_pitches.index(cf_end) -1]
-        if self.scale_name == "minor" and self.cf_direction[-1] == -1.0:
-            penultimate += 1
+            penultimate = cf_end - 1
+        #if self.scale_name == "minor" and self.cf_direction[-1] == -1.0:
+            #penultimate += 1
         return [penultimate,penultimate+s*Octave]
 
     def _get_harmonic_possibilities(self,cf_note):
@@ -129,8 +120,6 @@ class FirstSpecies:
         ctp = ctp_shell
         cf_dir = cf[idx]-cf[idx-1]
         ctp_dir = ctp[idx]-cf[idx-1]
-        print("cf_dir: ",cf_dir)
-        print("Ctp_dir: ",ctp_dir)
         if cf_dir == ctp_dir:
             return "parallel"
         elif (cf_dir == 0 and ctp_dir != 0) or (ctp_dir == 0 and cf_dir != 0):
@@ -142,12 +131,9 @@ class FirstSpecies:
 
     def _initialize_cpt(self):
         poss = self._get_list_of_possible_notes()
-        print("poss: ",poss)
         ctp_notes = []
         for p in poss:
             ctp_notes.append(rm.choice(p))
-        for i in range(len(ctp_notes)):
-            print(self._motion(i,ctp_notes))
         return ctp_notes,poss
 
     """ GLOBAL RULE PENALTIES"""
@@ -156,14 +142,14 @@ class FirstSpecies:
         if ctp_shell.count(max(ctp_shell)) == 1 and (ctp_shell.index(max(ctp_shell)) != self.cf_notes.index(max(self.cf_notes))):
             return 0
         else:
+            self.ctp_errors.append("No unique climax that is different from the cf")
             return 150
 
     def _valid_range(self,ctp_shell):
         if abs(max(ctp_shell)-min(ctp_shell)) > Octave+M3:
-            print("Range too wide")
+            self.ctp_errors.append("Range too wide")
             return 150
         else:
-            print("VALID RANGE")
             return 0
 
     def _check_outlines(self,ctp_shell):
@@ -182,7 +168,7 @@ class FirstSpecies:
 
         for interval in not_allowed_intervals:
             if interval in outline_intervals:
-                print("Outlining a seventh or tritone")
+                self.ctp_errors.append("Outlining a seventh or tritone")
                 return 150
 
         return 0
@@ -192,10 +178,10 @@ class FirstSpecies:
         if idx == 0:
             return 0
         if ctp_shell[idx]-ctp_shell[idx-1] not in self.melodic_intervals:
-            print("dissonant melodic interval")
+            self.ctp_errors.append("dissonant melodic interval")
             return 150
         elif abs(ctp_shell[idx]-ctp_shell[idx-1]) is Octave:
-            print("Octave leap, small penalty")
+            self.ctp_errors.append("Octave leap, small penalty")
             return 50
         else:
             return 0
@@ -210,7 +196,7 @@ class FirstSpecies:
             lowest_voice = ctp_shell
             upper_voice = self.cf_notes
         if upper_voice[idx]-lowest_voice[idx] in self.perfect_intervals and self._motion(idx,ctp_shell) not in ["contrary","oblique"]:
-            print("Perfect interval approached by wrong motion")
+            self.ctp_errors.append("Perfect interval approached by wrong motion")
             return 150
         return 0
 
@@ -222,10 +208,10 @@ class FirstSpecies:
             upper_voice = self.cf_notes
             lower_voice = ctp_shell
         if idx < len(ctp_shell)-1 and lower_voice[idx+1] > upper_voice[idx]:
-            print("voice overlapping")
+            self.ctp_errors.append("voice overlapping")
             return 150
         if upper_voice[idx]-lower_voice[idx] < 0:
-            print("Voice crossing")
+            self.ctp_errors.append("Voice crossing")
             return 150
         else:
             return 0
@@ -244,15 +230,15 @@ class FirstSpecies:
         if abs(prev_leap) >= P4: # large leap
             if abs(next_leap) in [m2,M2] and prev_dir == next_dir:
                 score += 50
-                print("A leap is not properly recovered")
+                self.ctp_errors.append("A leap is not properly recovered")
             elif abs(next_leap) >= P4 and prev_dir != next_dir:
-                print("Large successive leaps in opposite direction")
+                self.ctp_errors.append("Large successive leaps in opposite direction")
                 score += 100
             elif abs(next_leap) >= P4 and prev_dir == next_dir == 1.0 and prev_leap <= next_leap:
-                print("successive ascending leaps with the smaller preceding the larger")
+                self.ctp_errors.append("successive ascending leaps with the smaller preceding the larger")
                 score += 50
             elif (abs(next_leap) >= P4) and (prev_dir == next_dir == -1.0) and (abs(prev_leap) >= abs(next_leap)):
-                print("successive descending leaps with the larger preceding the smaller")
+                self.ctp_errors.append("successive descending leaps with the larger preceding the smaller")
                 score += 50
         return score
 
@@ -263,10 +249,10 @@ class FirstSpecies:
         ctp = ctp_shell
         score = 0
         if ctp[idx-1] == ctp[idx] == ctp[idx+1]:
-            print("repeated notes")
+            self.ctp_errors.append("repeated notes")
             score += 50
         if ctp[idx] == self.cf_tonic:
-            print("tonic inside end points")
+            self.ctp_errors.append("tonic inside end points")
             score += 50
         return score
 
@@ -280,7 +266,7 @@ class FirstSpecies:
             upper_voice = self.cf_notes
             lower_voice = ctp_shell
         if abs(upper_voice[idx] - lower_voice[idx]) in self.perfect_intervals and abs(upper_voice[idx+1]-lower_voice[idx+1]) in self.perfect_intervals:
-            print("Successive perfect intervals")
+            self.ctp_errors.append("Successive perfect intervals")
             return 100
         return 0
 
@@ -326,10 +312,10 @@ class FirstSpecies:
         penalty = 0
         if upper_note - lower_note not in [m3,M3,m6,M6]:
             penalty += 15 # very small
-            print("interval not third or sixth")
+            self.ctp_errors.append("interval not third or sixth")
         if self._motion(idx,ctp_draft) != "contrary":
             penalty += 15
-            print("interval not contrary")
+            self.ctp_errors.append("interval not contrary")
         return penalty
     def _global_penalty(self, ctp_shell):
         """
@@ -361,9 +347,11 @@ class FirstSpecies:
         return penalty
 
     def generate_ctp(self):
+        t0 = time()
         total_penalty = math.inf
         iteration = 0
-        while total_penalty >= 150:
+        while total_penalty >= 150 and iteration <= 1000:
+            self.ctp_errors = []
             total_penalty = 0
             ctp_shell,poss = self._initialize_cpt() # initialized randomly
             for i in range(len(ctp_shell)):
@@ -379,51 +367,19 @@ class FirstSpecies:
                         local_max = penalty
                         best_choice = notes
                 ctp_shell[i] = best_choice
-                print("local max: ",local_max)
                 # test
+            self.ctp_errors = []
             total_penalty += self._global_penalty(ctp_shell)
             iteration += 1
-            print("iter: ",iteration)
-            print("total penalty: ",total_penalty)
+            #print("iter: ",iteration)
         self.ctp_notes = ctp_shell
+        t1 = time()
+        print("time for generating ctp: ",str((t1-t0)*1000)+"ms")
+        print("errors in ctp: ",self.ctp_errors)
+        print("Iterations: ",iteration)
 
 
     def construct_ctp_melody(self,start = 0):
         self.ctp_melody = m.Melody(self.key,self.scale,self.cf.bar_length,melody_notes=self.ctp_notes,melody_rhythm = self.melody_rhythm,start = start,voice_range = self.voice_range)
         return self.ctp_melody
-"""
-test = FirstSpecies(cf,ctp_position = "below")
-test.generate_ctp()
-ctp_melody = test.construct_ctp_melody(start = 0)
-print("cf melody",cf.melody)
-print("counterp mel: ",ctp_melody.melody)
-print(cf.melody_rhythm)
-print(test.ctp_notes)
-def test(cf,ctp):
-    inst = pretty_midi.Instrument(program=pretty_midi.instrument_name_to_program("church organ"),is_drum = False, name="counterpoint")
-    #inst2 = pretty_midi.Instrument(program = 0, is_drum = False, name= "cantus firmus")
-    cf.to_instrument(inst,start = 0, time = cf.melody_rhythm)
-    ctp.to_instrument(inst,start = 0, time = cf.melody_rhythm)
-    m.export_to_midi(inst,tempo = 120.0, name = "first_species/D_minor_organ_bass.mid")
-#test(cf,ctp_melody)
-"""
-"""
-Initialize()
-draft counterpoint 
-pick note
-check outlines, leaps, ...
 
-Local_constraints()
-_get_melodic_possibilities()
-_get_harmonic_possibilities()
-^ pick common notes
-
-
-BackTrack()
-BestPossibility()
-
-must enforce contrary motion
-
-"""
-def sign(x):
-    return math.copysign(1, x)
