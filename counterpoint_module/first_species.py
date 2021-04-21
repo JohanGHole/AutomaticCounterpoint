@@ -1,6 +1,6 @@
 import music_module.music as m
 from music_module.constants import *
-from counterpoint_module.cantus_firmus import *
+from counterpoint_module.cf import *
 import math
 import pretty_midi
 """
@@ -9,7 +9,7 @@ TODO: The hard rules of counterpoint (taken from the study of counterpoint):
     2) diatonic except raised leading tone in minor  (check)
     3) All harmonies must be consonant (a perfect fourth is considered a dissonance) (check)
     4) The first interval must be any perfect harmony and the last an octave or unison (check)
-    5) The last interval must be approached by motion of a minor second upwards (note rule 8 may not be broken) (bugged, needs revisit)
+    5) The last interval must be approached by motion of a minor second upwards (note rule 8 may not be broken) (check)
     6) All perfect intervals must be approached by contrary motion
     7) motion can proceed by step or leap but steps and leaps of augmented and diminished intervals and leaps of any seventh
        are forbidden. Leaps greater than a ascending sixth are forbidden except for leaps of an octave which should be rare
@@ -32,13 +32,14 @@ cf = [60,62,64,65,67,69,67,65,64,62,60]
 #cf = [62,69,65,64,62,65,64,62,60,64,62]
 cf_len = [8]*len(cf)
 tempo = 120.0
-cf = Cantus_Firmus(key = "C", scale = "major", bar_length = 1, melody_notes = cf, melody_rhythm = cf_len,voice_range = RANGES[ALTO] )
-cf = Cantus_Firmus(key = "E", scale = "minor",bar_length = 1, voice_range = RANGES[ALTO])
-cf.generate_cf()
+#cf = Cantus_Firmus(key = "C", scale = "major", bar_length = 1, melody_notes = cf, melody_rhythm = cf_len,voice_range = RANGES[TENOR] )
+#cf = Cantus_Firmus(key = "E", scale = "minor",bar_length = 2, voice_range = RANGES[TENOR])
+#cf.generate_cf()
 
 class FirstSpecies:
-    melodic_intervals = [Unison, P4,P5,P8,m2,M2,m3,M3,m6]
+    melodic_intervals = [Unison,m2,M2,m3,M3,P4,P5,P8,-m2,-M2,-m3,-M3,-P4,-P5,-P8]
     harmonic_consonances = [m3,M3,P5,m6,M6,P8,P8+m3,P8+M3]
+    perfect_intervals = [P5,P8]
     def __init__(self,cf,ctp_position = "above"):
         self.key = cf.key
         self.cf = cf
@@ -66,128 +67,346 @@ class FirstSpecies:
         self.ctp_notes = [None for elem in self.cf_notes]
         self.ctp_tonic = cf.start_note+(RANGES.index(self.voice_range)-RANGES.index(cf.voice_range))*Octave
         self.cf_tonic = cf.start_note
-        self.harmonic_progression = [None for i in range(len(self.cf_notes))]
-        self.melodic_progression = [None for i in range(len(self.cf_notes)-1)]
         self.cf_direction = [sign(self.cf_notes[i]-self.cf_notes[i-1]) for i in range(1,len(self.cf_notes))]
-        self.start_note, self.end_note, self.penultimate_note = self._initialize_cpt()
+        self.ctp_notes,self.poss = self._initialize_cpt()
         print(self.cf_direction)
         self.ctp_melody = None
 
-    def _check_melodic_motion(self,prev_note,possibilities):
-        p = possibilities.copy()
-        for notes in possibilities:
-            if self.ctp_position == "upper":
-                if abs(prev_note-notes) not in self.melodic_intervals:
-                    p.remove(notes)
-                    print("removed ",notes)
-            else:
-                if abs(notes-prev_note) not in self.melodic_intervals:
-                    p.remove(notes)
-        return p
-    def _check_perfect_consonances(self,idx,cf_note, prev_note,possibilities):
-        p = possibilities.copy()
-        for note in possibilities:
-            if self.ctp_position == "above":
-                if m.Interval(cf_note, note).is_perfect() and self.cf_direction[idx] == sign(note-prev_note):
-                    p.remove(note)
-            else:
-                if m.Interval(note,cf_note).is_perfect() and self.cf_direction[idx] == sign(note-prev_note):
-                    p.remove(note)
-        return p
-    def _check_large_leaps(self,idx,possibilities):
-        p = possibilities.copy()
-        if idx < 2:
-            # not possible to check if leaps are resolved
-            return p
-        cf_note = self.cf_notes[idx]
-        prev_note = self.ctp_notes[idx-1]
-        prev_prev_note = self.ctp_notes[idx-2]
-
-
-    def _best_pick(self,idx,harm_cons):
-        possibilities = harm_cons.copy()
-        prev_note = self.ctp_notes[idx-1]
-        cf_note = self.cf_notes[idx]
-        possibilities = self._check_melodic_motion(prev_note, possibilities)
-        print("both harmonic and melodic possibilities: ",possibilities)
-        possibilities = self._check_perfect_consonances(idx,cf_note,prev_note,possibilities)
-        print("Removed parallel fifths: ",possibilities)
-        print("")
-        return rm.choice(possibilities)
-        # Each note is assigned a score. Prefer contrary motion +100, step + 100, small_leap + 75,
-        # pref contrary motion and 3 and 6 over perfect consonances
-    def _best_possibility(self,idx):
-        harm_poss = self._get_harmonic_possibilities(self.cf_notes[idx])
-        print("harmonic poss: ",harm_poss)
-        next_note = self._best_pick(idx,harm_poss)
-        return next_note
-    def _get_harmonic_possibilities(self,cf_note):
-        harm_poss = []
-        for intervals in self.harmonic_consonances:
-            if self.ctp_position == "above":
-                if (cf_note+intervals) in self.scale_pitches:
-                    harm_poss.append(cf_note+intervals)
-            else:
-                if (cf_note-intervals) in self.scale_pitches:
-                    harm_poss.append(cf_note-intervals)
-        return harm_poss
-
-    def _initialize_cpt(self):
-        start_note = self._start_note()
-        end_note = self._end_note()
-        penultimate_note = self._penultimate_note(end_note)
-        return start_note,end_note,penultimate_note
-
-    def _start_note(self):
+    """ HELP FUNCTIONS FOR INITIALIZING COUNTERPOINT"""
+    def _start_notes(self):
         if self.ctp_position == "above":
-            return rm.choice([self.cf_tonic,self.cf_tonic+P5,self.cf_tonic+Octave])
+            return [self.cf_tonic,self.cf_tonic+P5,self.cf_tonic+Octave]
         else:
-            return self.cf_tonic-Octave
+            return [self.cf_tonic-Octave]
 
-    def _end_note(self):
+    def _end_notes(self):
         if self.ctp_position == "above":
-            return rm.choice([self.cf_tonic,self.cf_tonic+Octave])
+            return [self.cf_tonic,self.cf_tonic+Octave]
         else:
-            return rm.choice([self.cf_tonic,self.cf_tonic-Octave])
+            return [self.cf_tonic,self.cf_tonic-Octave]
 
-    def _penultimate_note(self,ctp_end):
+    def _penultimate_notes(self,cf_end):
+        if self.ctp_position == "above":
+            s = 1
+        else:
+            s = -1
         if self.cf_direction[-1] == 1.0:
-            penultimate = self.scale_pitches[self.scale_pitches.index(ctp_end)+1]
+            penultimate = self.scale_pitches[self.scale_pitches.index(cf_end)+1]
         else:
-            penultimate = self.scale_pitches[self.scale_pitches.index(ctp_end) -1]
+            penultimate = self.scale_pitches[self.scale_pitches.index(cf_end) -1]
         if self.scale_name == "minor" and self.cf_direction[-1] == -1.0:
             penultimate += 1
-        return penultimate
+        return [penultimate,penultimate+s*Octave]
 
-    def draft_counterpoint(self):
+    def _get_harmonic_possibilities(self,cf_note):
+        poss = []
+        for interval in self.harmonic_consonances:
+            if self.ctp_position == "above":
+                if cf_note+interval in self.scale_pitches:
+                    poss.append(cf_note+interval)
+            else:
+                if cf_note-interval in self.scale_pitches:
+                    poss.append(cf_note-interval)
+        return poss
+
+    def _get_list_of_possible_notes(self):
+        poss = [None for elem in self.cf_notes]
         for i in range(len(self.cf_notes)):
             if i == 0:
-                self.ctp_notes[i] = self.start_note
-            elif i == len(self.cf_notes)-1:
-                self.ctp_notes[i] = self.end_note
+                poss[i] = self._start_notes()
             elif i == len(self.cf_notes)-2:
-                self.ctp_notes[i] = self.penultimate_note
+                poss[i] = self._penultimate_notes(self.cf_notes[i+1])
+            elif i == len(self.cf_notes)-1:
+                poss[i] = self._end_notes()
             else:
-                self.ctp_notes[i] = self._best_possibility(i)
+                poss[i] = self._get_harmonic_possibilities(self.cf_notes[i])
+        return poss
+
+    def _motion(self,idx,ctp_shell):
+        if idx == 0:
+            return
+        cf = self.cf_notes
+        ctp = ctp_shell
+        cf_dir = cf[idx]-cf[idx-1]
+        ctp_dir = ctp[idx]-cf[idx-1]
+        print("cf_dir: ",cf_dir)
+        print("Ctp_dir: ",ctp_dir)
+        if cf_dir == ctp_dir:
+            return "parallel"
+        elif (cf_dir == 0 and ctp_dir != 0) or (ctp_dir == 0 and cf_dir != 0):
+            return "oblique"
+        elif sign(cf_dir) == sign(ctp_dir) and cf_dir != ctp_dir:
+            return "similar"
+        else:
+            return "contrary"
+
+    def _initialize_cpt(self):
+        poss = self._get_list_of_possible_notes()
+        print("poss: ",poss)
+        ctp_notes = []
+        for p in poss:
+            ctp_notes.append(rm.choice(p))
+        for i in range(len(ctp_notes)):
+            print(self._motion(i,ctp_notes))
+        return ctp_notes,poss
+
+    """ GLOBAL RULE PENALTIES"""
+    def _check_climax(self,ctp_shell):
+        # Unique climax that is different from the cantus firmus
+        if ctp_shell.count(max(ctp_shell)) == 1 and (ctp_shell.index(max(ctp_shell)) != self.cf_notes.index(max(self.cf_notes))):
+            return 0
+        else:
+            return 150
+
+    def _valid_range(self,ctp_shell):
+        if abs(max(ctp_shell)-min(ctp_shell)) > Octave+M3:
+            print("Range too wide")
+            return 150
+        else:
+            print("VALID RANGE")
+            return 0
+
+    def _check_outlines(self,ctp_shell):
+        outline_idx = [0]
+        outline_intervals = []
+        not_allowed_intervals = [Tritone, m7, M7]
+        # mellom ytterkant og inn + endring innad
+        dir = [sign(ctp_shell[i + 1] - ctp_shell[i]) for i in range(len(ctp_shell) - 1)]
+        for i in range(len(dir) - 1):
+            if dir[i] != dir[i + 1]:
+                outline_idx.append(i + 1)
+        outline_idx.append(len(ctp_shell) - 1)
+        # Iterate over the outline indices and check if a tritone is found
+        for i in range(len(outline_idx) - 1):
+            outline_intervals.append(abs(ctp_shell[outline_idx[i]] - ctp_shell[outline_idx[i + 1]]))
+
+        for interval in not_allowed_intervals:
+            if interval in outline_intervals:
+                print("Outlining a seventh or tritone")
+                return 150
+
+        return 0
+
+    """Index based global """
+    def _check_melodic_intervals(self,idx,ctp_shell):
+        if idx == 0:
+            return 0
+        if ctp_shell[idx]-ctp_shell[idx-1] not in self.melodic_intervals:
+            print("dissonant melodic interval")
+            return 150
+        elif abs(ctp_shell[idx]-ctp_shell[idx-1]) is Octave:
+            print("Octave leap, small penalty")
+            return 50
+        else:
+            return 0
+
+    def _check_perfect_intervals(self,idx,ctp_shell):
+        if idx == 0:
+            return 0
+        if self.ctp_position == "above":
+            lowest_voice = self.cf_notes
+            upper_voice = ctp_shell
+        else:
+            lowest_voice = ctp_shell
+            upper_voice = self.cf_notes
+        if upper_voice[idx]-lowest_voice[idx] in self.perfect_intervals and self._motion(idx,ctp_shell) not in ["contrary","oblique"]:
+            print("Perfect interval approached by wrong motion")
+            return 150
+        return 0
+
+    def _check_voice_crossing(self,idx, ctp_shell):
+        if self.ctp_position == "above":
+            upper_voice = ctp_shell
+            lower_voice = self.cf_notes
+        else:
+            upper_voice = self.cf_notes
+            lower_voice = ctp_shell
+        if idx < len(ctp_shell)-1 and lower_voice[idx+1] > upper_voice[idx]:
+            print("voice overlapping")
+            return 150
+        if upper_voice[idx]-lower_voice[idx] < 0:
+            print("Voice crossing")
+            return 150
+        else:
+            return 0
+
+    def _check_leaps(self,idx,ctp_shell):
+        if idx == 0:
+            return 0
+        elif idx == len(ctp_shell)-1:
+            return 0
+        ctp = ctp_shell
+        next_leap = ctp[idx+1]-ctp[idx]
+        next_dir = sign(next_leap)
+        prev_leap = ctp[idx]-ctp[idx-1]
+        prev_dir = sign(prev_leap)
+        score = 0
+        if abs(prev_leap) >= P4: # large leap
+            if abs(next_leap) in [m2,M2] and prev_dir == next_dir:
+                score += 50
+                print("A leap is not properly recovered")
+            elif abs(next_leap) >= P4 and prev_dir != next_dir:
+                print("Large successive leaps in opposite direction")
+                score += 100
+            elif abs(next_leap) >= P4 and prev_dir == next_dir == 1.0 and prev_leap <= next_leap:
+                print("successive ascending leaps with the smaller preceding the larger")
+                score += 50
+            elif (abs(next_leap) >= P4) and (prev_dir == next_dir == -1.0) and (abs(prev_leap) >= abs(next_leap)):
+                print("successive descending leaps with the larger preceding the smaller")
+                score += 50
+        return score
+
+    def _check_repeated_notes(self,idx,ctp_shell):
+        # check successive repeated notes and if they are tonic if before == current == after: penalty. If tonic, penalty.
+        if idx == 0 or idx == len(ctp_shell)-1:
+            return 0
+        ctp = ctp_shell
+        score = 0
+        if ctp[idx-1] == ctp[idx] == ctp[idx+1]:
+            print("repeated notes")
+            score += 50
+        if ctp[idx] == self.cf_tonic:
+            print("tonic inside end points")
+            score += 50
+        return score
+
+    def _check_harmonic_motion(self,idx,ctp_shell):
+        if idx == len(ctp_shell)-1:
+            return 0
+        if self.ctp_position == "above":
+            upper_voice = ctp_shell
+            lower_voice = self.cf_notes
+        else:
+            upper_voice = self.cf_notes
+            lower_voice = ctp_shell
+        if abs(upper_voice[idx] - lower_voice[idx]) in self.perfect_intervals and abs(upper_voice[idx+1]-lower_voice[idx+1]) in self.perfect_intervals:
+            print("Successive perfect intervals")
+            return 100
+        return 0
+
+    def _strict_rules_penalty(self,ctp_shell):
+        """ NONE OF THE FOLLOWING RULES MIGHT BE BROKEN => PENALTY FOR EACH >= 150"""
+        penalty = 0
+        for i in range(len(ctp_shell)):
+            penalty += self._check_melodic_intervals(i,ctp_shell)
+            penalty += self._check_perfect_intervals(i,ctp_shell)
+            penalty += self._check_voice_crossing(i,ctp_shell)
+        penalty += self._check_outlines(ctp_shell)
+        penalty += self._check_climax(ctp_shell)
+        return penalty
+
+    def _soft_rules_penalty(self,ctp_shell):
+        """ SOME OF THE FOLLOWING RULES MIGHT BE BROKEN => PENALTY FOR EACH BETWEEN 25 AND 150"""
+        # No more than two successively repeated notes. check
+        # ascending and successive leaps: the larger before the smaller. check
+        # descending and successive leaps: the smaller before the larger. check
+        # Leaps should be followed by inward, stepwise motion check
+        # The same harmonic interval should not repeat more than three times
+        # maximum two successive leaps, and they need to be in the same direction
+        penalty = 0
+        for i in range(len(ctp_shell)):
+            penalty += self._check_repeated_notes(i,ctp_shell)
+            penalty += self._check_leaps(i,ctp_shell) # melodic + check inward stepwise motion + successive leaps max 2 + need to be in same direction
+            penalty += self._check_harmonic_motion(i,ctp_shell) # no consecutive perfect intervals
+        return penalty
+
+
+    def _local_penalty(self,idx,ctp_draft):
+        # Thirds and sixths better harmonic motion than others (local)
+        # Pref contrary motion if possible (local)
+        ctp_note = ctp_draft[idx]
+        cf_note = self.cf_notes[idx]
+        if self.ctp_position == "above":
+            upper_note = ctp_note
+            lower_note = cf_note
+        else:
+            upper_note = cf_note
+            lower_note = ctp_note
+        """Check harmonic"""
+        penalty = 0
+        if upper_note - lower_note not in [m3,M3,m6,M6]:
+            penalty += 15 # very small
+            print("interval not third or sixth")
+        if self._motion(idx,ctp_draft) != "contrary":
+            penalty += 15
+            print("interval not contrary")
+        return penalty
+    def _global_penalty(self, ctp_shell):
+        """
+    6) All perfect intervals must be approached by contrary motion
+    7) motion can proceed by step or leap but steps and leaps of augmented and diminished intervals and leaps of any seventh
+       are forbidden. Leaps greater than a ascending sixth are forbidden except for leaps of an octave which should be rare
+    8) The counterpoint may not outline an interval of a tritone or seventh except for an augmented fourth that is fully,
+       stepwise outlined and precedes an inwards step
+       No two successive leaps in the same direction may total more than an octave V
+    3) while ascending, in the case of two successive steps or leaps, the larger one should precede the smaller; while descending the smaller
+       should precede the larger V
+    4) No successive leaps in opposite directions; leaps should be followed by inward, stepwise motion V
+    5) The same harmonic interval should not repeat more than three times
+    6) There should be no more than two successive leaps
+    7) The range of the counterpoint should be limited to a tenth and all notes in the chosen mode should appear in the counterpoint"""
+        # In range of a tenth of the other voice (Check)
+        # no perfect intervals by direct or oblique motion (check)
+        # skip in same direction BAD
+        # prefer contrary motion
+        # no outlines
+        # has climax and climax_ctp != climax cf
+        # pref thirds and sixths over perfect intervals
+        # check successive notes. Max 2
+        # The larger leap should precede the smaller in ascending successive steps or leaps. The opposite for descending (smaller first, then larger)
+        # There should be no more than two successive leaps
+        # range of a tenth
+        penalty = self._strict_rules_penalty(ctp_shell)
+        penalty += self._soft_rules_penalty(ctp_shell)
+        return penalty
+
+    def generate_ctp(self):
+        total_penalty = math.inf
+        iteration = 0
+        while total_penalty >= 150:
+            total_penalty = 0
+            ctp_shell,poss = self._initialize_cpt() # initialized randomly
+            for i in range(len(ctp_shell)):
+                local_max = math.inf
+                ctp_draft = ctp_shell.copy()
+                mel_cons = poss[i]
+                rm.shuffle(mel_cons) # randomize the order
+                for notes in mel_cons:
+                    ctp_draft[i] = notes
+                    penalty = self._global_penalty(ctp_draft)
+                    penalty += self._local_penalty(i, ctp_draft)
+                    if penalty <= local_max:
+                        local_max = penalty
+                        best_choice = notes
+                ctp_shell[i] = best_choice
+                print("local max: ",local_max)
+                # test
+            total_penalty += self._global_penalty(ctp_shell)
+            iteration += 1
+            print("iter: ",iteration)
+            print("total penalty: ",total_penalty)
+        self.ctp_notes = ctp_shell
+
 
     def construct_ctp_melody(self,start = 0):
         self.ctp_melody = m.Melody(self.key,self.scale,self.cf.bar_length,melody_notes=self.ctp_notes,melody_rhythm = self.melody_rhythm,start = start,voice_range = self.voice_range)
         return self.ctp_melody
-
-test = FirstSpecies(cf,ctp_position = "above")
-test.draft_counterpoint()
+"""
+test = FirstSpecies(cf,ctp_position = "below")
+test.generate_ctp()
 ctp_melody = test.construct_ctp_melody(start = 0)
 print("cf melody",cf.melody)
 print("counterp mel: ",ctp_melody.melody)
 print(cf.melody_rhythm)
 print(test.ctp_notes)
 def test(cf,ctp):
-    inst = pretty_midi.Instrument(program=0,is_drum = False, name="counterpoint")
+    inst = pretty_midi.Instrument(program=pretty_midi.instrument_name_to_program("church organ"),is_drum = False, name="counterpoint")
     #inst2 = pretty_midi.Instrument(program = 0, is_drum = False, name= "cantus firmus")
     cf.to_instrument(inst,start = 0, time = cf.melody_rhythm)
     ctp.to_instrument(inst,start = 0, time = cf.melody_rhythm)
-    m.export_to_midi(inst,tempo = 120.0, name = "first_species/E_moll_alto.mid")
-test(cf,ctp_melody)
+    m.export_to_midi(inst,tempo = 120.0, name = "first_species/D_minor_organ_bass.mid")
+#test(cf,ctp_melody)
+"""
 """
 Initialize()
 draft counterpoint 
@@ -208,257 +427,3 @@ must enforce contrary motion
 """
 def sign(x):
     return math.copysign(1, x)
-
-
-def first_species_counterpoint(notes, tonic, voice_range, upper=True, verbose=False):
-    # From cantus firmus:
-    cf_melodic_intervals = [notes[i + 1] - notes[i] for i in range(len(notes) - 1)]
-    directions = [sign(cf_melodic_intervals[i]) for i in range(len(cf_melodic_intervals))]
-    perfect_intervals = [Unison, P5, Octave]
-
-    # Counterpoint
-    harmonic_intervals = [None for x in notes]
-    possible_leaps = [m3, M3, P4, P5, m6, M6, Octave]
-    if upper:
-        consonant_intervals = [m3, M3, P5, m6, M6, Octave + M3, Octave + m3]
-    else:
-        consonant_intervals = [m3, M3, P4, m6, M6, Octave + M3, Octave + m3]
-        consonant_intervals = [x * -1 for x in consonant_intervals]
-    if upper:
-        signum = 1
-    else:
-        signum = -1
-    counterpoint_range = voice_range + signum
-
-    counterpoint_range_note_numb = RANGES[counterpoint_range]
-
-    # Strict Rules
-    def get_start_possibilities():
-        if upper:
-            return [tonic + P5, tonic + Octave]
-        else:
-            return [tonic - Octave]
-
-    def get_end_possibility():
-        if upper:
-            return [tonic + Octave]
-        else:
-            return [tonic - Octave]
-
-    def get_leading_tone():
-        # Rule 3
-        if notes[-2] % Octave == (tonic % Octave + 2) % Octave:
-            if upper:
-                penultimate_note = tonic + 11
-            else:
-                penultimate_note = tonic - Octave - 1
-        elif notes[-2] % Octave == (tonic % Octave + 11) % Octave:
-            if upper:
-                penultimate_note = tonic + Octave + 2
-            else:
-                penultimate_note = tonic - Octave + 2
-        else:
-            if verbose:
-                print("FAIL: Rule 3 not satisfied")
-                return
-        return [penultimate_note]
-
-    def get_consonant_possibilities(note):
-        p = []
-        for i in consonant_intervals:
-            p.append(note + i)
-        return p
-
-    def check_accidentals(possibilities):
-        p = possibilities.copy()
-        for poss in p:
-            if poss % Octave in SHARPS_IDX:
-                possibilities.remove(poss)
-
-    def get_melodic_intervals(possibilities, prev_note):
-        """
-        :param possibilities: list of possibilities in pitch values
-        :param prev_note: previous note in the counterpoint melody
-        :return: the melodic intervals
-        """
-
-        poss = possibilities.copy()
-        return [p - prev_note for p in poss]
-
-    def get_harmonic_intervals(possibilities, cf_note):
-        if upper:
-            return [p - cf_note for p in possibilities]
-        else:
-            return [cf_note - p for p in possibilities]
-
-    # Checks for complete counterpoint
-
-    def check_valid_melodic_outline(counterpoint):
-        outline_idx = [0]
-        outline_intervals = []
-        not_allowed_intervals = [Tritone, M7]
-        # mellom ytterkant og inn + endring innad
-        dir = [sign(counterpoint[i + 1] - counterpoint[i]) for i in range(len(counterpoint) - 1)]
-        for i in range(len(dir) - 1):
-            if dir[i] != dir[i + 1]:
-                outline_idx.append(i + 1)
-        outline_idx.append(len(counterpoint) - 1)
-        # Iterate over the outline indices and check if a tritone is found
-        for i in range(len(outline_idx) - 1):
-            outline_intervals.append(abs(counterpoint[outline_idx[i]] - counterpoint[outline_idx[i + 1]]))
-
-        for interval in not_allowed_intervals:
-            if interval in outline_intervals:
-                return False
-
-        return True
-
-    def check_harmonic_motion(possibilities, prev_note, cf_note, index):
-        # Removes the possibility of perfect harmonic intervals if the voices move in parallel motion
-        melodic_intervals = get_melodic_intervals(possibilities, prev_note)
-        harmonic_intervals = get_harmonic_intervals(possibilities, cf_note)
-        p = possibilities.copy()
-        if P4 in harmonic_intervals:
-            possibilities.remove(p[harmonic_intervals.index(P4)])
-        for i in range(len(p)):
-            if directions[index] == sign(melodic_intervals[i]) and harmonic_intervals[i] in perfect_intervals:
-                # Remove perfect consonants in parallel motion
-                possibilities.remove(p[i])
-
-    def check_leaps(possibilities, prev_note):
-        melodic_intervals = get_melodic_intervals(possibilities, prev_note)
-        p = possibilities.copy()
-        for l in melodic_intervals:
-            if l >= 3 and abs(l) not in possible_leaps:
-                possibilities.remove(p[melodic_intervals.index(l)])
-
-    def get_strict_possibilities(index, cp_notes):
-        """
-        :param index: int - index of cantus firmus to be harmonized
-        :return poss: list of possible counterpoint tones
-        """
-        cf_note = notes[index]
-        if index > 0:
-            prev_note = cp_notes[index - 1]
-        else:
-            prev_note = None
-
-        # Strict Rule nr 4
-        if index == 0:
-            poss = get_start_possibilities()
-        elif index == len(notes) - 1:
-            poss = get_end_possibility()
-
-        # Strict rule nr 5
-        else:
-            # Rule nr 3
-            poss = get_consonant_possibilities(cf_note)
-            # rule nr 6
-            check_harmonic_motion(poss, prev_note, cf_note, index)
-            # Rule nr 7
-            check_leaps(poss, prev_note)
-            if get_leading_tone()[0] in poss and index == len(notes) - 2:
-                poss = get_leading_tone()
-        # Rule nr 2
-        check_accidentals(poss)
-        return poss
-
-    def check_repeats(poss, cp_notes, index):
-        possCopy = poss.copy()
-        if index >= 2:
-            for p in possCopy:
-                if p == cp_notes[index - 1] == cp_notes[index - 2]:  # Three successive repeats of same note
-                    poss.remove(p)
-
-    def check_successive_leaps(poss, cp_notes, index, strict_factor):
-        possCopy = poss.copy()
-        if index < 2:  # Too early to check for successive leaps! No change is made
-            return poss
-        else:
-            prev_interval = cp_notes[index - 1] - cp_notes[index - 2]
-            print("Prev interval: ", prev_interval)
-            if abs(prev_interval) >= 3:  # The prev interval was a leap
-                for p in possCopy:
-                    current_interval = p - cp_notes[index - 1]
-                    print("current interval: ", current_interval)
-                    if abs(current_interval) >= 3:  # two successive intervals!
-                        # Rule 4
-                        if sign(current_interval) != sign(
-                                prev_interval):  # This last #Opposite direction and leap, not allowed
-                            poss.remove(p)
-                        # Rule 2
-                        elif abs(current_interval) + abs(prev_interval) >= Octave:  # Then this
-                            poss.remove(p)
-                        # Rule 3
-
-                        elif sign(current_interval) == sign(prev_interval) == 1.0:  # first to go
-                            # Ascending. Prev_interval must be larger or equal to current_interval
-                            if current_interval >= prev_interval:
-                                poss.remove(p)
-                        elif sign(current_interval) == sign(prev_interval) == -1.0:
-                            if abs(prev_interval) >= abs(current_interval):
-                                poss.remove(p)
-
-    def get_soft_possibilities(poss, cp_notes, index, strict_factor=1.0):
-        """
-        :param poss: strict_possibilities
-        :param index: current index of counterpoint construction
-        :param strict_factor: a strict factor that controls how many of the checks to be included
-        :return:
-        """
-        soft_poss = poss.copy()
-        # Soft rule 1
-        check_repeats(soft_poss, cp_notes, index)
-        # Soft rule 2, 3 and 4
-        check_successive_leaps(soft_poss, cp_notes, index, strict_factor)
-        print("soft poss: ", soft_poss)
-        return soft_poss
-
-    def poss_is_empty(poss):
-        return poss == []
-
-    def no_possible_leading_tone(poss, i):
-        return i == len(notes) - 2 and get_leading_tone()[0] not in poss
-
-    def construct_counterpoint():
-        """
-        Constructs a counterpoint either above or below the given cantus firmus.
-        The counterpoint must satisfy all of the strict rules of counterpoint.
-        The counterpoint should satisfy as many of the soft rules of counterpoint as possible.
-
-        :return cp_notes: list of counterpoint notes that satisfy as many of the
-        """
-        backTrack = False
-        cp_poss = [None for x in notes]
-        cp_notes = [None for x in notes]
-        i = 0
-        while i < len(notes):
-            if backTrack:
-                i -= 1
-                cp_poss[i].remove(cp_notes[i])
-                cp_notes[i] = None
-                poss = cp_poss[i]
-                backTrack = False
-            else:
-                poss = get_strict_possibilities(i, cp_notes)
-                poss = get_soft_possibilities(poss, cp_notes, i)
-                # print("poss after soft poss for idx "+str(i)+": ",poss)
-            if poss_is_empty(poss) or no_possible_leading_tone(poss, i):
-                backTrack = True
-
-            else:
-                cp_poss[i] = poss
-                cp_notes[i] = rm.choice(poss)
-                i += 1
-        return cp_notes
-
-    valid_outline = False
-    # the construction is wrapped in strict global checkers that satisfy the strict rules must be satisfied. To avoid
-    # modification of the constructed counterpoint, another call is made until all conditions are satisfied.
-    while not valid_outline:
-        cp_notes = construct_counterpoint()
-        print("valid melodic outline? : ", check_valid_melodic_outline(cp_notes))
-        if check_valid_melodic_outline(cp_notes):
-            valid_outline = True
-    print(cp_notes)
-    return cp_notes

@@ -272,13 +272,13 @@ class Melody:
         self.scale_pitches = self.scale.get_scale_pitches()
         self.note_resolution = 8
         self.start = start
-        self.bar_length = bar_length
+        self.bar_length = float(bar_length)
         if melody_notes == None:
             num_bars = rm.randint(4, 8)
             mel = [60 for i in range(num_bars)]
             self.melody = mel
         else:
-            self.melody = self.melody = melody_notes
+            self.melody = melody_notes
         if isinstance(melody_rhythm, int):
             self.melody_rhythm = [melody_rhythm for elem in self.melody]
         elif isinstance(melody_rhythm, list):
@@ -291,7 +291,7 @@ class Melody:
         t = self.start
         for elem in self.melody_rhythm:
             t += elem
-        return t*self.bar_length / self.note_resolution
+        return t*self.bar_length / float(self.note_resolution)
         "ANALYSIS AND AUGMENTATION"
 
     def get_note_durations(self):
@@ -342,7 +342,7 @@ class Melody:
             time = self.melody_rhythm
             i = 0
             for pitch in self.melody:
-                dur = time[i]*self.bar_length / self.note_resolution
+                dur = float(time[i]*self.bar_length / float(self.note_resolution))
                 note = Note(pitch, start=t, end=t + dur)
                 note.to_instrument(instrument)
                 t += dur
@@ -350,14 +350,14 @@ class Melody:
         elif isinstance(time, int):
             t = start
             for pitch in self.melody:
-                dur = time*self.bar_length / self.note_resolution
+                dur = float(time*self.bar_length / float(self.note_resolution))
                 note = Note(pitch, start=t, end=t + dur)
                 note.to_instrument(instrument)
                 t += dur
         elif isinstance(time, list) and len(time) == len(self.melody):
             t = start
             for i in range(len(self.melody)):
-                dur = time[i] * self.bar_length / self.note_resolution
+                dur = float(time[i] * self.bar_length / float(self.note_resolution))
                 note = Note(self.melody[i], start=t, end=t + dur)
                 note.to_instrument(instrument)
                 t += dur
