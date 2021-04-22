@@ -16,9 +16,9 @@ class Melody:
         else:
             self.generate_melody()
         if isinstance(melody_rhythm, int):
-            self.time = [time for elem in self.melody]
-        elif isinstance(time, list):
-            self.time = time
+            self.time = [melody_rhythm for elem in self.melody]
+        elif isinstance(melody_rhythm, list):
+            self.time = melody_rhythm
 
     @classmethod
     def generate_melody(self):

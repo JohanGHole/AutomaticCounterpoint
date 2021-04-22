@@ -290,15 +290,3 @@ class Cantus_Firmus(m.Melody):
             print("Current shell: ", cf_shell)
 
         self.melody = cf_shell
-
-"""
-for i in range(1):
-    cf = Cantus_Firmus(KEY_NAMES[i],"major",bar_length=8,voice_range=RANGES[TENOR])
-    cf.generate_cf()
-    inst = pretty_midi.Instrument(program=pretty_midi.instrument_name_to_program("violin"), is_drum=False, name="Cf")
-    cf.to_instrument(inst, time=1, start=0)
-    m.export_to_midi(inst, tempo=120.0, name="cantus_firmus/" + cf.key + "_v3.mid")
-
-start and stop notes - must be the tonic (key) in valid range. 
-
-"""

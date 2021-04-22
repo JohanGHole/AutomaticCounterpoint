@@ -64,5 +64,10 @@ SPECIES_RHYTHMS = {
     "fourth": [8,4],
     "fifth": [8,4,2,6]
 }
-
+RANGES_NAMES = {
+    0: "bass",
+    1: "tenor",
+    2: "alto",
+    3: "soprano"
+}
 consonant_melodic_intervals = [m2,M2,m3, M3, P4, P5, m6, Octave]

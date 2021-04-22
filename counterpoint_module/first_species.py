@@ -36,7 +36,7 @@ class FirstSpecies:
     def __init__(self,cf,ctp_position = "above"):
         self.key = cf.key
         self.cf = cf
-        self.melody_rhythm = cf.melody_rhythm
+        self.melody_rhythm = cf.melody_rhythm.copy()
         self.scale_name = cf.scale_name
         self.ctp_position = ctp_position
         self.cf_notes = cf.melody
@@ -89,7 +89,7 @@ class FirstSpecies:
             #penultimate += 1
         return [penultimate,penultimate+s*Octave]
 
-    def _get_harmonic_possibilities(self,cf_note):
+    def get_harmonic_possibilities(self,cf_note):
         poss = []
         for interval in self.harmonic_consonances:
             if self.ctp_position == "above":
@@ -110,7 +110,7 @@ class FirstSpecies:
             elif i == len(self.cf_notes)-1:
                 poss[i] = self._end_notes()
             else:
-                poss[i] = self._get_harmonic_possibilities(self.cf_notes[i])
+                poss[i] = self.get_harmonic_possibilities(self.cf_notes[i])
         return poss
 
     def _motion(self,idx,ctp_shell):

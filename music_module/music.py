@@ -358,19 +358,8 @@ class Melody:
             t = start
             for i in range(len(self.melody)):
                 dur = float(time[i] * self.bar_length / float(self.note_resolution))
-                note = Note(self.melody[i], start=t, end=t + dur)
-                note.to_instrument(instrument)
+                if self.melody[i] != -1:
+
+                    note = Note(self.melody[i], start=t, end=t + dur)
+                    note.to_instrument(instrument)
                 t += dur
-
-
-twinkle_time = [4, 4, 4, 4, 4, 4, 8, 4, 4, 4, 4, 4, 4, 8]
-twinkle = Melody("C", "major", 1, [60, 60, 67, 67, 69, 69, 67, 65, 65, 64, 64, 62, 62, 60], melody_rhythm=twinkle_time, start=0,
-                 voice_range = TENOR_RANGE)
-inst = pretty_midi.Instrument(program=0, is_drum=False, name="inversion test")
-twinkle_inv = twinkle.diatonic_inversion()
-twinkle_retro = twinkle.retrograde()
-twinkle_retro.start = twinkle.get_end_time()
-twinkle.to_instrument(inst)
-twinkle_retro.to_instrument(inst)
-export_to_midi(inst, name="testRetrograde.mid")
-#print(twinkle_inv.melody)

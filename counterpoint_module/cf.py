@@ -271,13 +271,5 @@ class Cantus_Firmus(m.Melody):
         t1 = time()
         print("total comp time: ",str((t1-t0)*1000)+"ms")
 
-"""
-for i in range(1):
-    cf = Cantus_Firmus(KEY_NAMES[i],"minor",bar_length=8,voice_range=RANGES[ALTO])
-    cf.generate_cf()
-    inst = pretty_midi.Instrument(program=pretty_midi.instrument_name_to_program("violin"), is_drum=False, name="Cf")
-    cf.to_instrument(inst, time=1, start=0)
-    m.export_to_midi(inst, tempo=120.0, name="cantus_firmus/" + cf.key + "_new_cf.mid")
-"""
 
 
