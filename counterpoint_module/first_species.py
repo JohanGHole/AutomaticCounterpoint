@@ -25,7 +25,9 @@ TODO: Soft rules of counterpoint
     5) The same harmonic interval should not repeat more than three times
     6) There should be no more than two successive leaps
     7) The range of the counterpoint should be limited to a tenth and all notes in the chosen mode should appear in the counterpoint
-
+Harmonic_rules
+melodic_rules
+voice_independence_rules
 """
 
 
@@ -207,7 +209,7 @@ class FirstSpecies:
         else:
             upper_voice = self.cf_notes
             lower_voice = ctp_shell
-        if idx < len(ctp_shell)-1 and lower_voice[idx+1] > upper_voice[idx]:
+        if idx < len(ctp_shell)-1 and lower_voice[idx+1] >= upper_voice[idx]:
             self.ctp_errors.append("voice overlapping")
             return 150
         if upper_voice[idx]-lower_voice[idx] < 0:
@@ -270,32 +272,26 @@ class FirstSpecies:
             return 100
         return 0
 
-    def _strict_rules_penalty(self,ctp_shell):
+    def _local_strict_rules_penalty(self,i,ctp_shell):
         """ NONE OF THE FOLLOWING RULES MIGHT BE BROKEN => PENALTY FOR EACH >= 150"""
         penalty = 0
-        for i in range(len(ctp_shell)):
-            penalty += self._check_melodic_intervals(i,ctp_shell)
-            penalty += self._check_perfect_intervals(i,ctp_shell)
-            penalty += self._check_voice_crossing(i,ctp_shell)
+        penalty += self._check_melodic_intervals(i,ctp_shell)
+        penalty += self._check_perfect_intervals(i,ctp_shell)
+        penalty += self._check_voice_crossing(i,ctp_shell)
+        return penalty
+
+    def _local_soft_rules_penalty(self,i,ctp_shell):
+        penalty = 0
+        penalty += self._check_repeated_notes(i, ctp_shell)
+        penalty += self._check_leaps(i,ctp_shell)  # melodic + check inward stepwise motion + successive leaps max 2 + need to be in same direction
+        penalty += self._check_harmonic_motion(i, ctp_shell)  # no consecutive perfect intervals
+        return penalty
+
+    def _global_strict_rules_penalty(self,ctp_shell):
+        penalty = 0
         penalty += self._check_outlines(ctp_shell)
         penalty += self._check_climax(ctp_shell)
         return penalty
-
-    def _soft_rules_penalty(self,ctp_shell):
-        """ SOME OF THE FOLLOWING RULES MIGHT BE BROKEN => PENALTY FOR EACH BETWEEN 25 AND 150"""
-        # No more than two successively repeated notes. check
-        # ascending and successive leaps: the larger before the smaller. check
-        # descending and successive leaps: the smaller before the larger. check
-        # Leaps should be followed by inward, stepwise motion check
-        # The same harmonic interval should not repeat more than three times
-        # maximum two successive leaps, and they need to be in the same direction
-        penalty = 0
-        for i in range(len(ctp_shell)):
-            penalty += self._check_repeated_notes(i,ctp_shell)
-            penalty += self._check_leaps(i,ctp_shell) # melodic + check inward stepwise motion + successive leaps max 2 + need to be in same direction
-            penalty += self._check_harmonic_motion(i,ctp_shell) # no consecutive perfect intervals
-        return penalty
-
 
     def _local_penalty(self,idx,ctp_draft):
         # Thirds and sixths better harmonic motion than others (local)
@@ -311,39 +307,17 @@ class FirstSpecies:
         """Check harmonic"""
         penalty = 0
         if upper_note - lower_note not in [m3,M3,m6,M6]:
-            penalty += 15 # very small
+            penalty += 5 # very small
             self.ctp_errors.append("interval not third or sixth")
         if self._motion(idx,ctp_draft) != "contrary":
-            penalty += 15
+            penalty += 5
             self.ctp_errors.append("interval not contrary")
+        penalty += self._local_soft_rules_penalty(idx,ctp_draft)
+        penalty += self._local_strict_rules_penalty(idx,ctp_draft)
         return penalty
+
     def _global_penalty(self, ctp_shell):
-        """
-    6) All perfect intervals must be approached by contrary motion
-    7) motion can proceed by step or leap but steps and leaps of augmented and diminished intervals and leaps of any seventh
-       are forbidden. Leaps greater than a ascending sixth are forbidden except for leaps of an octave which should be rare
-    8) The counterpoint may not outline an interval of a tritone or seventh except for an augmented fourth that is fully,
-       stepwise outlined and precedes an inwards step
-       No two successive leaps in the same direction may total more than an octave V
-    3) while ascending, in the case of two successive steps or leaps, the larger one should precede the smaller; while descending the smaller
-       should precede the larger V
-    4) No successive leaps in opposite directions; leaps should be followed by inward, stepwise motion V
-    5) The same harmonic interval should not repeat more than three times
-    6) There should be no more than two successive leaps
-    7) The range of the counterpoint should be limited to a tenth and all notes in the chosen mode should appear in the counterpoint"""
-        # In range of a tenth of the other voice (Check)
-        # no perfect intervals by direct or oblique motion (check)
-        # skip in same direction BAD
-        # prefer contrary motion
-        # no outlines
-        # has climax and climax_ctp != climax cf
-        # pref thirds and sixths over perfect intervals
-        # check successive notes. Max 2
-        # The larger leap should precede the smaller in ascending successive steps or leaps. The opposite for descending (smaller first, then larger)
-        # There should be no more than two successive leaps
-        # range of a tenth
-        penalty = self._strict_rules_penalty(ctp_shell)
-        penalty += self._soft_rules_penalty(ctp_shell)
+        penalty = self._global_strict_rules_penalty(ctp_shell)
         return penalty
 
     def generate_ctp(self):
@@ -361,17 +335,22 @@ class FirstSpecies:
                 rm.shuffle(mel_cons) # randomize the order
                 for notes in mel_cons:
                     ctp_draft[i] = notes
-                    penalty = self._global_penalty(ctp_draft)
+                    penalty = 0
                     penalty += self._local_penalty(i, ctp_draft)
+                    penalty += self._global_penalty(ctp_draft)
                     if penalty <= local_max:
                         local_max = penalty
                         best_choice = notes
                 ctp_shell[i] = best_choice
                 # test
             self.ctp_errors = []
+            acc_local_penalty = 0
+            for i in range(len(ctp_shell)):
+                acc_local_penalty += self._local_penalty(i,ctp_shell)
+            print("acc local penalty: ",acc_local_penalty)
+            total_penalty += acc_local_penalty
             total_penalty += self._global_penalty(ctp_shell)
             iteration += 1
-            #print("iter: ",iteration)
         self.ctp_notes = ctp_shell
         t1 = time()
         print("time for generating ctp: ",str((t1-t0)*1000)+"ms")
