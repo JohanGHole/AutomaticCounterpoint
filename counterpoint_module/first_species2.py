@@ -490,45 +490,50 @@ class FirstSpecies:
 
     def _best_first_guess(self,ctp_shell,cf_notes,poss):
         ordered_poss = [[] for elem in poss]
-        print("cf before first guess: ",ctp_shell)
-        for j in range(5):
+        print("ctp before first guess: ",ctp_shell)
+        prev_penalty = math.inf
+        penalty = 0
+        while penalty < prev_penalty:
             for i in range(len(ctp_shell)):
-                local_max = math.inf
                 ctp_draft = ctp_shell.copy()
                 mel_cons = poss[i]
                 note_penalties = {}
                 for notes in mel_cons:
                     ctp_draft[i] = notes
-                    self.ctp_weights = [0 for elem in ctp_draft]
                     penalty = self.total_penalty(ctp_draft, cf_notes)
                     note_penalties[notes] = penalty
                 note_penalties = {k: v for k, v in sorted(note_penalties.items(), key=lambda item: item[1])}
                 print(note_penalties)
                 ordered_poss[i] = list(note_penalties.keys())
                 ctp_shell[i] = ordered_poss[i][0]
-        return ordered_poss, ctp_draft
+            self.ctp_weights = [0 for elem in ctp_draft]
+            self.ctp_errors = []
+            prev_penalty = self.total_penalty(ctp_shell,cf_notes)
+        return ordered_poss, ctp_shell, prev_penalty
+
     def generate_ctp(self):
         t0 = time()
         total_penalty = math.inf
         iteration = 0
         cf_notes = self.cf_notes
         ctp_shell, poss = self._initialize_ctp()
-        ordered_poss, ctp_shell = self._best_first_guess(ctp_shell,cf_notes,poss)
-        print(ordered_poss)
-        print(len(poss))
+        ordered_poss, ctp_shell, error = self._best_first_guess(ctp_shell,cf_notes,poss)
+        print("ctp after best first guess: ",ctp_shell)
+        print("weighted indices: ", self.ctp_weights)
+        print("final error: ",error)
         self.ctp_notes = ctp_shell
         t1 = time()
         print("ordered list: ",ordered_poss)
         print("time for generating ctp: ", str((t1 - t0) * 1000) + "ms")
         print("errors in ctp: ", self.ctp_errors)
-        print("Iterations: ", iteration)
         print("counterpoint: ",self.ctp_notes)
+        print("weighted indices: ",self.ctp_weights)
 
     def construct_ctp_melody(self,start = 0):
         self.ctp_melody = m.Melody(self.key,self.scale,self.cf.bar_length,melody_notes=self.ctp_notes,melody_rhythm = self.melody_rhythm,start = start,voice_range = self.voice_range)
         return self.ctp_melody
-
-cf = Cantus_Firmus("C","major",2,melody_notes=[60,62,64,67,64,62,60],voice_range=RANGES[ALTO])
+test_mel = [60,62,64,67,69,67,60]
+cf = Cantus_Firmus("C","major",2,voice_range=RANGES[ALTO])
 test = FirstSpecies(cf, ctp_position = "above")
 test.generate_ctp()
 ctp_draft = [60,65,71,60,69,71]
