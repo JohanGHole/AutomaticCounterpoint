@@ -491,7 +491,7 @@ class FirstSpecies:
     def _best_first_guess(self,ctp_shell,cf_notes,poss):
         ordered_poss = [[] for elem in poss]
         print("cf before first guess: ",ctp_shell)
-        for j in range(10):
+        for j in range(5):
             for i in range(len(ctp_shell)):
                 local_max = math.inf
                 ctp_draft = ctp_shell.copy()
