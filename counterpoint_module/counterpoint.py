@@ -1,4 +1,5 @@
 from music_module.constants import *
+from counterpoint_module.first_species2 import *
 from counterpoint_module.first_species import *
 from counterpoint_module.second_species import *
 from counterpoint_module.fourth_species import *
@@ -29,14 +30,14 @@ class Counterpoint:
         self.loaded_instruments = [None, None, None, None]
         self.voices[self.cf_range_name] = self.cf
         if num_voices >=2 and above:
-            ctp_above = SecondSpecies(self.cf,ctp_position = "above")#SecondSpecies(self.cf,ctp_position = "above")#FirstSpecies(self.cf,ctp_position = "above")
-            #ctp_above.generate_ctp()
+            ctp_above = FirstSpecies2(self.cf,ctp_position = "above")#SecondSpecies(self.cf,ctp_position = "above")#FirstSpecies(self.cf,ctp_position = "above")
+            ctp_above.generate_ctp()
             print("ctp rhythm: ",ctp_above.melody_rhythm)
             print("ctp notes: ",ctp_above.ctp_notes)
             ctp_above.construct_ctp_melody(0)
             self.voices[self.cf_range_name + 1] = ctp_above.ctp_melody
         if num_voices >= 3 or (num_voices >= 2 and not above):
-            ctp_below = FirstSpecies(self.cf,ctp_position = "below")
+            ctp_below = FirstSpecies2(self.cf,ctp_position = "below")
             ctp_below.generate_ctp()
             ctp_below.construct_ctp_melody(0)
             self.voices[self.cf_range_name - 1] = ctp_below.ctp_melody
@@ -97,10 +98,10 @@ E_major_Ctp.export_to_midi(tempo = 120, name = "generated_midi/first_species/F_m
 def large_test_four_voices(cf_range,num_voices):
     inst = ["church organ"]*4
     for i in range(len(KEY_NAMES)):
-        ctp = Counterpoint(KEY_NAMES[i],"major",above = True, num_voices = num_voices,cf_range = cf_range, bar_length = 1)
-        ctp.set_instrument(inst)
+        ctp = Counterpoint(KEY_NAMES[i],"major",above = False, num_voices = num_voices,cf_range = cf_range, bar_length = 1)
+        #ctp.set_instrument(inst)
         ctp.to_instrument()
         print("loaded instruments: ", ctp.loaded_instruments)
-        ctp.export_to_midi(tempo = 120, name = "generated_midi/second_species/"+KEY_NAMES[i]+"_CHURCH_ORGAN.mid")
+        ctp.export_to_midi(tempo = 120, name = "generated_midi/first_species/"+KEY_NAMES[i]+"v2_STRINGS.mid")
 
-large_test_four_voices(RANGES[TENOR],3)
+large_test_four_voices(RANGES[TENOR],2)

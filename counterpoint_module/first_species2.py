@@ -3,6 +3,7 @@ from music_module.constants import *
 from counterpoint_module.cf import *
 import math
 import pretty_midi
+import itertools
 """
 Harmonic_rules
 melodic_rules
@@ -22,7 +23,7 @@ RHYTHM
 """
 
 
-class FirstSpecies:
+class FirstSpecies2:
     melodic_intervals = [Unison,m2,M2,m3,M3,P4,P5,P8,-m2,-M2,-m3,-M3,-P4,-P5,-P8]
     harmonic_consonances = [m3,M3,P5,m6,M6,P8,P8+m3,P8+M3]
     perfect_intervals = [P5,P8]
@@ -55,8 +56,15 @@ class FirstSpecies:
         #self.ctp_notes,self.poss = self._initialize_cpt()
         self.ctp_melody = None
         self.ctp_errors = []
-        self.ctp_weights = [0 for elem in self.ctp_notes]
+        self.ctp_weights = self._reset_weights()
+        self.glob_idx = 0
     """ HELP FUNCTIONS """
+    def _reset_weights(self):
+        ctp_weights = {}
+        for i in range(len(self.ctp_notes)):
+            ctp_weights[i] = 0
+        return ctp_weights
+
     def _motion(self,idx,upper_voice,lower_voice):
         if idx == 0:
             return
@@ -479,6 +487,7 @@ class FirstSpecies:
             else:
                 poss[i] = self.get_harmonic_possibilities(self.cf_notes[i])
         return poss
+
     """ INITIALIZING COUNTERPOINT WITH RANDOM VALUES"""
 
     def _initialize_ctp(self):
@@ -488,28 +497,110 @@ class FirstSpecies:
             ctp_notes.append(rm.choice(p))
         return ctp_notes, poss
 
-    def _best_first_guess(self,ctp_shell,cf_notes,poss):
-        ordered_poss = [[] for elem in poss]
-        print("ctp before first guess: ",ctp_shell)
-        prev_penalty = math.inf
-        penalty = 0
-        while penalty < prev_penalty:
-            for i in range(len(ctp_shell)):
-                ctp_draft = ctp_shell.copy()
-                mel_cons = poss[i]
-                note_penalties = {}
-                for notes in mel_cons:
-                    ctp_draft[i] = notes
-                    penalty = self.total_penalty(ctp_draft, cf_notes)
-                    note_penalties[notes] = penalty
-                note_penalties = {k: v for k, v in sorted(note_penalties.items(), key=lambda item: item[1])}
-                print(note_penalties)
-                ordered_poss[i] = list(note_penalties.keys())
-                ctp_shell[i] = ordered_poss[i][0]
-            self.ctp_weights = [0 for elem in ctp_draft]
+    """ SEARCH ALGORITHM """
+
+    def _get_indices(self, idx, n_window):
+        s_w = []
+        for i in range(n_window):
+            if idx + i < len(self.ctp_notes):
+                s_w.append(idx + i)
+            else:
+                s_w.append(len(self.ctp_notes) - 1 - i)
+        s_w.sort()
+        return [s_w[0],s_w[-1]]
+
+    def _recursive_search(self,ctp_draft,error,search_window,poss):
+        paths = []
+        for i in itertools.product(*poss[search_window[0]:search_window[1]+1]):
+            paths.append(list(i))
+        ctp_draft[search_window[0]:search_window[1]+1] = paths[0]
+        best_ctp = ctp_draft
+        error = error
+        for path in paths:
+            ctp_draft[search_window[0]:search_window[1] + 1] = path
             self.ctp_errors = []
-            prev_penalty = self.total_penalty(ctp_shell,cf_notes)
-        return ordered_poss, ctp_shell, prev_penalty
+            local_error = self.total_penalty(ctp_draft,self.cf_notes)
+            if  local_error < error:
+                best_ctp = ctp_draft
+                error = local_error
+                if local_error < 100:
+                    return best_ctp, error
+        return best_ctp, error
+
+    def _search(self,ctp_draft,cf_notes,poss):
+        n = 1
+        error = math.inf
+        prev_error = math.inf
+        best_ctp = ctp_draft
+        j = 1
+        window_idx = 0
+        while error >= 150:
+            while j <= 3:
+                window_idx += 1
+                search_error = math.inf
+                for i in range(len(ctp_draft)):
+                    n = self._get_indices(i,j)
+                    ctp_draft, error = self._recursive_search(ctp_draft,error,n,poss)
+                    if i == 0:
+                        search_error = error
+                    if error < prev_error:
+                        best_ctp = ctp_draft
+                        prev_error = error
+                        if error < 100:
+                            return error, best_ctp
+                if search_error <= error or window_idx > 10:
+                    j += 1
+                    window_idx = 0
+                print("error: ",error)
+        return error, best_ctp
+
+    def variable_window_search(self,ctp_shell,cf_notes,poss):
+        error = math.inf
+        protected_indices = []
+        weights = self._reset_weights()
+        ctp_draft, error = self._best_first_guess(ctp_shell,cf_notes,poss)
+        sorted_weights = {k: v for k, v in sorted(self.ctp_weights.items(), key=lambda item: item[1], reverse=True)}
+        weighted_indices = list(sorted_weights.keys())
+        print("sorted weights: ",sorted_weights)
+        print(weighted_indices)
+        print("error before second windows: ", error)
+        search_idx = weighted_indices[0]
+        error, ctp_draft, protected_indices = self._search(search_idx, error, ctp_draft, cf_notes, poss)
+
+        self.ctp_errors = []
+        self.ctp_weights = self._reset_weights()
+        error = self.total_penalty(ctp_draft, cf_notes)
+        print("error after second windows: ",error)
+        ctp_shell = ctp_draft.copy()
+        return ctp_shell, error
+
+    def _third_order_search(self,prev_penalty,ctp_shell,cf_notes,ordered_poss):
+        global_penalty = 100000
+        new_penalty = 150000
+        ctp_draft = ctp_shell.copy()
+        while new_penalty > global_penalty:
+            new_penalty = global_penalty
+            for i in range(len(ctp_shell)-2):
+                current_best_choice = [ordered_poss[i][0],ordered_poss[i+1][0],ordered_poss[i+2][0]]
+                current_best = math.inf
+                for j in range(len(ordered_poss[i])):
+                    first_note = ordered_poss[i][j]
+                    ctp_draft[i] = first_note
+                    for k in range(len(ordered_poss[i+1])):
+                        second_note = ordered_poss[i+1][k]
+                        ctp_draft[i+1] = second_note
+                        third_note, error = self._first_order_search(ctp_draft,cf_notes,i+2,ordered_poss[i+2])
+                        if error <= current_best:
+                            current_best_choice = [first_note,second_note,third_note]
+                            current_best = error
+                ctp_draft[i] = current_best_choice[0]
+                ctp_draft[i+1] = current_best_choice[1]
+                ctp_draft[i+2] = current_best_choice[2]
+            self.ctp_errors = []
+            self.ctp_weights = [0 for elem in self.ctp_notes]
+            global_penalty = self.total_penalty(ctp_draft,cf_notes)
+        ctp_shell = ctp_draft.copy()
+        return ordered_poss, ctp_shell, global_penalty
 
     def generate_ctp(self):
         t0 = time()
@@ -517,14 +608,11 @@ class FirstSpecies:
         iteration = 0
         cf_notes = self.cf_notes
         ctp_shell, poss = self._initialize_ctp()
-        ordered_poss, ctp_shell, error = self._best_first_guess(ctp_shell,cf_notes,poss)
-        print("ctp after best first guess: ",ctp_shell)
-        print("weighted indices: ", self.ctp_weights)
-        print("final error: ",error)
+        print(poss)
+        error, ctp_shell = self._search(ctp_shell,cf_notes,poss)
         self.ctp_notes = ctp_shell
-        # Expand the search window. Lookahead. 
+        # Expand the search window. Lookahead.
         t1 = time()
-        print("ordered list: ",ordered_poss)
         print("time for generating ctp: ", str((t1 - t0) * 1000) + "ms")
         print("errors in ctp: ", self.ctp_errors)
         print("counterpoint: ",self.ctp_notes)
@@ -533,8 +621,12 @@ class FirstSpecies:
     def construct_ctp_melody(self,start = 0):
         self.ctp_melody = m.Melody(self.key,self.scale,self.cf.bar_length,melody_notes=self.ctp_notes,melody_rhythm = self.melody_rhythm,start = start,voice_range = self.voice_range)
         return self.ctp_melody
+
 test_mel = [60,62,64,67,69,67,60]
 cf = Cantus_Firmus("C","major",2,voice_range=RANGES[ALTO])
-test = FirstSpecies(cf, ctp_position = "above")
+cf.generate_cf()
+print("cf length: ",cf.length)
+print("cf notes: ",cf.melody)
+test = FirstSpecies2(cf, ctp_position = "above")
 test.generate_ctp()
 ctp_draft = [60,65,71,60,69,71]

@@ -87,6 +87,7 @@ class Cantus_Firmus(m.Melody):
         else:
             leading_tone = self.start_note - 1
         return [leading_tone, leading_tone+Octave]
+
     def _generate_length(self):
         """
         Generates the number of bars for the cantus firmus. Length between 8 and 16 bars, with 12 being most common.
