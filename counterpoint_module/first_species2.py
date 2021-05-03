@@ -522,6 +522,7 @@ class FirstSpecies:
         print("weighted indices: ", self.ctp_weights)
         print("final error: ",error)
         self.ctp_notes = ctp_shell
+        # Expand the search window. Lookahead. 
         t1 = time()
         print("ordered list: ",ordered_poss)
         print("time for generating ctp: ", str((t1 - t0) * 1000) + "ms")
