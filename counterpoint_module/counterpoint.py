@@ -23,17 +23,12 @@ class Counterpoint:
         self.bar_length = bar_length
         self.cf = Cantus_Firmus(key,scale_name,bar_length,cf_notes,cf_rhythm,start = 0, voice_range = cf_range)
         self.cf.generate_cf()
-        print("cantus firmus: ", self.cf.melody)
-        print("cf rhythm: ", self.cf.melody_rhythm)
-        print("scale notes: ",cf.scale_pitches)
         self.voices = [None, None, None, None]
         self.loaded_instruments = [None, None, None, None]
         self.voices[self.cf_range_name] = self.cf
         if num_voices >=2 and above:
             ctp_above = FirstSpecies2(self.cf,ctp_position = "above")#SecondSpecies(self.cf,ctp_position = "above")#FirstSpecies(self.cf,ctp_position = "above")
             ctp_above.generate_ctp()
-            print("ctp rhythm: ",ctp_above.melody_rhythm)
-            print("ctp notes: ",ctp_above.ctp_notes)
             ctp_above.construct_ctp_melody(0)
             self.voices[self.cf_range_name + 1] = ctp_above.ctp_melody
         if num_voices >= 3 or (num_voices >= 2 and not above):
@@ -44,14 +39,11 @@ class Counterpoint:
         if num_voices >= 4:
             for i in range(len(self.cf.melody)):
                 self.cf.melody[i] += 0#Octave
-            print("cf_mel after: ", self.cf.melody)
             self.cf.voice_range = RANGES[RANGES.index(self.cf.voice_range) + 1]
-            print("new scale pitches: ",self.cf.voice_range)
             ctp_2above = SecondSpecies(self.cf, ctp_position="above")
             #ctp_2above.generate_ctp()
             ctp_2above.construct_ctp_melody(0)
             self.voices[self.cf_range_name + 2] = ctp_2above.ctp_melody
-        print(self.voices)
     def set_instrument(self,name):
         self.instruments = name
     def to_instrument(self):
@@ -96,12 +88,11 @@ E_major_Ctp.to_instrument()
 E_major_Ctp.export_to_midi(tempo = 120, name = "generated_midi/first_species/F_minor_choir.mid")
 """
 def large_test_four_voices(cf_range,num_voices):
-    inst = ["church organ"]*4
+    inst = ["choir aahs"]*4
     for i in range(len(KEY_NAMES)):
-        ctp = Counterpoint(KEY_NAMES[i],"major",above = False, num_voices = num_voices,cf_range = cf_range, bar_length = 1)
-        #ctp.set_instrument(inst)
+        ctp = Counterpoint(KEY_NAMES[i],"minor",above = True, num_voices = num_voices,cf_range = cf_range, bar_length = 1)
+        ctp.set_instrument(inst)
         ctp.to_instrument()
-        print("loaded instruments: ", ctp.loaded_instruments)
-        ctp.export_to_midi(tempo = 120, name = "generated_midi/first_species/"+KEY_NAMES[i]+"v2_STRINGS.mid")
+        ctp.export_to_midi(tempo = 120, name = "generated_midi/first_speciesv2/"+KEY_NAMES[i]+"v2_CHOIR.mid")
 
 large_test_four_voices(RANGES[TENOR],2)

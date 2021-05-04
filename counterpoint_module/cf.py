@@ -7,26 +7,6 @@ from time import time
 def sign(x):
     return math.copysign(1, x)
 
-"""
-This sub-module contains methods for generating a cantus firmus.
-
-TODO:
-    length of about 8–16 notes (check)
-    arhythmic (all whole notes; no long or short notes) (check)
-    begin and end on tonic (check)
-    approach final tonic by step (usually re–do, sometimes ti–do) (check)
-    all note-to-note progressions are melodic consonances (check)
-    range (interval between lowest and highest notes) of no more than a tenth, usually less than an octave (check)
-    a single climax (high point) that appears only once in the melody (check)
-    clear logical connection and smooth shape from beginning to climax to ending (check) (prioritize steps)
-    mostly stepwise motion, but with some leaps (mostly small leaps)
-    no repetition of “motives” or “licks”
-    any large leaps (fourth or larger) are followed by step in opposite direction
-    no more than two leaps in a row; no consecutive leaps in the same direction (Fux’s F-major cantus is an exception, where the back-to-back descending leaps outline a consonant triad.)
-    the leading tone progresses to the tonic
-    in minor, the leading tone only appears in the penultimate bar; the raised submediant is only used when progressing to that leading tone
-"""
-
 class Cantus_Firmus(m.Melody):
     # Some constants for easy access
     perfect_intervals = [Unison, P5, Octave]
@@ -63,13 +43,6 @@ class Cantus_Firmus(m.Melody):
             if pitches % Octave == root_idx:
                 possible_start_notes.append(pitches)
         self.tonics = possible_start_notes
-        print("tonics: ",self.tonics)
-        """
-        for notes in possible_start_notes:
-            if self.scale_pitches.index(notes) <= 1:
-                possible_start_notes.remove(notes)
-        """
-        print("tonics after: ",self.tonics)
         return possible_start_notes[0]
 
     def _penultimate_note(self):
@@ -265,12 +238,8 @@ class Cantus_Firmus(m.Melody):
             self.cf_errors = []
             total_penalty += self._global_penalty(cf_shell)
             iteration += 1
-            print("iter: ",iteration)
-        print("errors: ",self.cf_errors)
-        print(cf_shell)
         self.melody = cf_shell
         t1 = time()
-        print("total comp time: ",str((t1-t0)*1000)+"ms")
 
 
 

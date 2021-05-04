@@ -57,7 +57,7 @@ class FirstSpecies2:
         self.ctp_melody = None
         self.ctp_errors = []
         self.ctp_weights = self._reset_weights()
-        self.glob_idx = 0
+        self.error_threshold = 50
     """ HELP FUNCTIONS """
     def _reset_weights(self):
         ctp_weights = {}
@@ -210,8 +210,8 @@ class FirstSpecies2:
 
     def _is_repeating_pitches(self,ctp_draft):
         if self.ctp_position == "above":
-            for i in range(len(ctp_draft)-2):
-                if ctp_draft[i] == ctp_draft[i+1] == ctp_draft[i+2]:
+            for i in range(len(ctp_draft)-1): # was 2
+                if ctp_draft[i] == ctp_draft[i+1]: #== ctp_draft[i+2]:
                     return True
         else:
             for i in range(len(ctp_draft) - 1):
@@ -260,7 +260,7 @@ class FirstSpecies2:
             penalty += 100
         if self._is_repeating_pitches(ctp_draft):
             self.ctp_errors.append("Repeats pitches!")
-            penalty += 25
+            penalty += 50
         if not self._is_unique_climax(ctp_draft):
             self.ctp_errors.append("No unique climax or at same position as other voices!")
             penalty += 100
@@ -273,12 +273,15 @@ class FirstSpecies2:
 
     """ VOICE INDEPENDENCE RULES """
     def _is_perfect_interval_properly_approached(self,upper_voice,lower_voice,idx):
+        if idx == 0: # the start interval MUST be a perfect interval and is therefore allowed
+            return True
         if upper_voice[idx]-lower_voice[idx] in self.perfect_intervals:
             if self._motion(idx,upper_voice,lower_voice) not in ["oblique","contrary"]:
                 return False
             if self._is_large_leap(upper_voice,idx-1) or self._is_large_leap(lower_voice,idx-1):
-                if upper_voice[idx]-lower_voice[idx] == Octave and self._motion(idx,upper_voice,lower_voice) == "oblique":
-                    return True
+                if upper_voice[idx]-lower_voice[idx] == Octave:
+                    if self._motion(idx,upper_voice,lower_voice) == "oblique" or idx == len(upper_voice)-1:
+                        return True
                 else:
                     return False
         return True
@@ -509,124 +512,66 @@ class FirstSpecies2:
         s_w.sort()
         return [s_w[0],s_w[-1]]
 
-    def _recursive_search(self,ctp_draft,error,search_window,poss):
+    def _path_search(self,ctp_draft,error,search_window,poss,protected_indices):
         paths = []
+        if protected_indices != []:
+            for idx in protected_indices:
+                if idx in range(search_window[0],search_window[1]+1):
+                    return ctp_draft, error
         for i in itertools.product(*poss[search_window[0]:search_window[1]+1]):
             paths.append(list(i))
         ctp_draft[search_window[0]:search_window[1]+1] = paths[0]
-        best_ctp = ctp_draft
+        best_ctp = ctp_draft.copy()
         error = error
+        best_local_error = math.inf
         for path in paths:
             ctp_draft[search_window[0]:search_window[1] + 1] = path
             self.ctp_errors = []
             local_error = self.total_penalty(ctp_draft,self.cf_notes)
-            if  local_error < error:
-                best_ctp = ctp_draft
-                error = local_error
-                if local_error < 100:
-                    return best_ctp, error
-        return best_ctp, error
+            if  local_error < best_local_error:
+                best_ctp = ctp_draft.copy()
+                best_local_error = local_error
+        return best_ctp.copy(), best_local_error
 
-    def _search(self,ctp_draft,cf_notes,poss):
-        n = 1
+    def _search(self,ctp_draft,poss):
         error = math.inf
-        prev_error = math.inf
-        best_ctp = ctp_draft
+        best_scan_error = math.inf
         j = 1
-        window_idx = 0
-        while error >= 150:
-            while j <= 3:
-                window_idx += 1
-                search_error = math.inf
-                for i in range(len(ctp_draft)):
-                    n = self._get_indices(i,j)
-                    ctp_draft, error = self._recursive_search(ctp_draft,error,n,poss)
-                    if i == 0:
-                        search_error = error
-                    if error < prev_error:
-                        best_ctp = ctp_draft
-                        prev_error = error
-                        if error < 100:
-                            return error, best_ctp
-                if search_error <= error or window_idx > 10:
-                    j += 1
-                    window_idx = 0
-                print("error: ",error)
-        return error, best_ctp
-
-    def variable_window_search(self,ctp_shell,cf_notes,poss):
-        error = math.inf
         protected_indices = []
-        weights = self._reset_weights()
-        ctp_draft, error = self._best_first_guess(ctp_shell,cf_notes,poss)
-        sorted_weights = {k: v for k, v in sorted(self.ctp_weights.items(), key=lambda item: item[1], reverse=True)}
-        weighted_indices = list(sorted_weights.keys())
-        print("sorted weights: ",sorted_weights)
-        print(weighted_indices)
-        print("error before second windows: ", error)
-        search_idx = weighted_indices[0]
-        error, ctp_draft, protected_indices = self._search(search_idx, error, ctp_draft, cf_notes, poss)
-
-        self.ctp_errors = []
-        self.ctp_weights = self._reset_weights()
-        error = self.total_penalty(ctp_draft, cf_notes)
-        print("error after second windows: ",error)
-        ctp_shell = ctp_draft.copy()
-        return ctp_shell, error
-
-    def _third_order_search(self,prev_penalty,ctp_shell,cf_notes,ordered_poss):
-        global_penalty = 100000
-        new_penalty = 150000
-        ctp_draft = ctp_shell.copy()
-        while new_penalty > global_penalty:
-            new_penalty = global_penalty
-            for i in range(len(ctp_shell)-2):
-                current_best_choice = [ordered_poss[i][0],ordered_poss[i+1][0],ordered_poss[i+2][0]]
-                current_best = math.inf
-                for j in range(len(ordered_poss[i])):
-                    first_note = ordered_poss[i][j]
-                    ctp_draft[i] = first_note
-                    for k in range(len(ordered_poss[i+1])):
-                        second_note = ordered_poss[i+1][k]
-                        ctp_draft[i+1] = second_note
-                        third_note, error = self._first_order_search(ctp_draft,cf_notes,i+2,ordered_poss[i+2])
-                        if error <= current_best:
-                            current_best_choice = [first_note,second_note,third_note]
-                            current_best = error
-                ctp_draft[i] = current_best_choice[0]
-                ctp_draft[i+1] = current_best_choice[1]
-                ctp_draft[i+2] = current_best_choice[2]
-            self.ctp_errors = []
-            self.ctp_weights = [0 for elem in self.ctp_notes]
-            global_penalty = self.total_penalty(ctp_draft,cf_notes)
-        ctp_shell = ctp_draft.copy()
-        return ordered_poss, ctp_shell, global_penalty
+        best_ctp = ctp_draft.copy()
+        while error >= self.error_threshold and j <= 4:
+            error_window = math.inf
+            for i in range(len(ctp_draft)):
+                window_n = self._get_indices(i,j)
+                ctp_draft, error = self._path_search(best_ctp.copy(),error,window_n,poss,protected_indices)
+                if i == 0:
+                    error_window = error
+                if error < best_scan_error:
+                    best_ctp = ctp_draft.copy()
+                    best_scan_error = error
+                    if error < self.error_threshold:
+                        return best_scan_error, best_ctp
+            if error_window <= best_scan_error:
+                # No improvement, expand the window
+                j += 1
+        return best_scan_error,best_ctp
 
     def generate_ctp(self):
-        t0 = time()
-        total_penalty = math.inf
-        iteration = 0
         cf_notes = self.cf_notes
         ctp_shell, poss = self._initialize_ctp()
-        print(poss)
-        error, ctp_shell = self._search(ctp_shell,cf_notes,poss)
-        self.ctp_notes = ctp_shell
-        # Expand the search window. Lookahead.
-        t1 = time()
-        print("time for generating ctp: ", str((t1 - t0) * 1000) + "ms")
-        print("errors in ctp: ", self.ctp_errors)
-        print("counterpoint: ",self.ctp_notes)
-        print("weighted indices: ",self.ctp_weights)
+        error, ctp_shell = self._search(ctp_shell,poss)
+        self.ctp_notes = ctp_shell.copy()
+        self.ctp_errors = []
+        self.ctp_weights = self._reset_weights()
+        self.error = self.total_penalty(ctp_shell,cf_notes)
 
     def construct_ctp_melody(self,start = 0):
         self.ctp_melody = m.Melody(self.key,self.scale,self.cf.bar_length,melody_notes=self.ctp_notes,melody_rhythm = self.melody_rhythm,start = start,voice_range = self.voice_range)
         return self.ctp_melody
 
-test_mel = [60,62,64,67,69,67,60]
+"""test_mel = [60,62,64,67,69,67,60]
 cf = Cantus_Firmus("C","major",2,voice_range=RANGES[ALTO])
 cf.generate_cf()
-print("cf length: ",cf.length)
-print("cf notes: ",cf.melody)
 test = FirstSpecies2(cf, ctp_position = "above")
 test.generate_ctp()
-ctp_draft = [60,65,71,60,69,71]
+ctp_draft = [60,65,71,60,69,71]"""

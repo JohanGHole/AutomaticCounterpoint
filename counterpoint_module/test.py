@@ -64,3 +64,9 @@ def _recursive_search(self, ctp_draft, error, search_window, poss):
             if local_error < 100:
                 return best_ctp, error
     return best_ctp, error
+
+protected_indices = [0,1]
+search_window = [0,1]
+for elem in protected_indices:
+    if elem in range(search_window[0],search_window[1]+1):
+        print("hello!")
