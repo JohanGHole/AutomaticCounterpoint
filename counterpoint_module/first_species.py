@@ -29,6 +29,7 @@ RHYTHM
 
 class FirstSpecies:
     melodic_intervals = [Unison,m2,M2,m3,M3,P4,P5,P8,-m2,-M2,-m3,-M3,-P4,-P5,-P8]
+    dissonant_intervals = [m2,M2,M7,m7,P8+m2,P8+M2]
     harmonic_consonances = [m3,M3,P5,m6,M6,P8,P8+m3,P8+M3]
     perfect_intervals = [P5,P8]
     def __init__(self,cf,ctp_position = "above"):
@@ -60,16 +61,10 @@ class FirstSpecies:
         #self.ctp_notes,self.poss = self._initialize_cpt()
         self.ctp_melody = None
         self.ctp_errors = []
-        self.ctp_weights = self._reset_weights()
         self.error_threshold = 50
     """ HELP FUNCTIONS """
-    def _reset_weights(self):
-        ctp_weights = {}
-        for i in range(len(self.ctp_notes)):
-            ctp_weights[i] = 0
-        return ctp_weights
 
-    def _motion(self,idx,upper_voice,lower_voice):
+    def motion(self,idx,upper_voice,lower_voice):
         if idx == 0:
             return
         cf = upper_voice
@@ -236,27 +231,21 @@ class FirstSpecies:
         for i in range(len(ctp_draft)):
             if self._is_melodic_leap_too_large(ctp_draft,i):
                 self.ctp_errors.append("Too large leap!")
-                self.ctp_weights[i] += 4
                 penalty += 100
             if self._is_melodic_leap_octave(ctp_draft,i):
                 self.ctp_errors.append("Octave leap!")
-                self.ctp_weights[i] += 2
                 penalty += 25
             if not self._is_leap_compensated(ctp_draft,i):
                 self.ctp_errors.append("Leap not compensated!")
-                self.ctp_weights[i] += 2
                 penalty += 25
             if not self._is_octave_compensated(ctp_draft,i):
                 self.ctp_errors.append("Octave not compensated!")
-                self.ctp_weights[i] += 2
                 penalty += 25
             if self._is_successive_same_direction_leaps(ctp_draft,i):
                 self.ctp_errors.append("Successive Leaps in same direction!")
-                self.ctp_weights[i] += 1
                 penalty += 10
                 if not self._is_successive_leaps_valid(ctp_draft,i):
                     self.ctp_errors.append("Successive leaps strictly not valid!")
-                    self.ctp_weights[i] += 4
                     penalty += 100
         # Global rules
         if not self._is_within_range_of_a_tenth(ctp_draft):
@@ -280,11 +269,11 @@ class FirstSpecies:
         if idx == 0: # the start interval MUST be a perfect interval and is therefore allowed
             return True
         if upper_voice[idx]-lower_voice[idx] in self.perfect_intervals:
-            if self._motion(idx,upper_voice,lower_voice) not in ["oblique","contrary"]:
+            if self.motion(idx,upper_voice,lower_voice) not in ["oblique","contrary"]:
                 return False
             if self._is_large_leap(upper_voice,idx-1) or self._is_large_leap(lower_voice,idx-1):
                 if upper_voice[idx]-lower_voice[idx] == Octave:
-                    if self._motion(idx,upper_voice,lower_voice) == "oblique" or idx == len(upper_voice)-1:
+                    if self.motion(idx,upper_voice,lower_voice) == "oblique" or idx == len(upper_voice)-1:
                         return True
                 else:
                     return False
@@ -305,7 +294,7 @@ class FirstSpecies:
     def _is_parallel_fourths(self,upper_voice,lower_voice,idx):
         if idx == len(upper_voice)-1:
             return False
-        if self._motion(idx,upper_voice,lower_voice) == "parallel" and upper_voice[idx]-lower_voice[idx] == P4:
+        if self.motion(idx,upper_voice,lower_voice) == "parallel" and upper_voice[idx]-lower_voice[idx] == P4:
             return True
         return False
 
@@ -320,7 +309,7 @@ class FirstSpecies:
         return False
 
     def _is_contrary_motion(self,upper_voice,lower_voice,idx):
-        if self._motion(idx,upper_voice,lower_voice) == "contrary":
+        if self.motion(idx,upper_voice,lower_voice) == "contrary":
             return True
         else:
             return False
@@ -354,27 +343,21 @@ class FirstSpecies:
         for i in range(len(ctp_draft)):
             if not self._is_perfect_interval_properly_approached(upper_voice,lower_voice,i):
                 self.ctp_errors.append("Perfect interval not properly approached!")
-                self.ctp_weights[i] += 4
                 penalty += 100
             if not self._is_valid_consecutive_perfect_intervals(upper_voice,lower_voice,i):
                 self.ctp_errors.append("Consecutive perfect intervals, but they are not valid!")
-                self.ctp_weights[i] += 4
                 penalty += 100
             if self._is_parallel_fourths(upper_voice,lower_voice,i):
                 self.ctp_errors.append("Parallel fourths!")
-                self.ctp_weights[i] += 2
                 penalty += 50
             if self._is_voice_overlapping(upper_voice,lower_voice, i):
                 self.ctp_errors.append("Voice Overlapping!")
-                self.ctp_weights[i] += 4
                 penalty += 100
             if self._is_voice_crossing(upper_voice,lower_voice,i):
                 self.ctp_errors.append("Voice crossing!")
-                self.ctp_weights[i] += 2
                 penalty += 50
             if self._is_contrary_motion(upper_voice,lower_voice, i):
                     # This not not a severe violation, but more of a preference to avoid similar motion
-                    self.ctp_weights[i] += 1
                     penalty += 10
         # Global rules
         if not self._is_valid_number_of_consecutive_intervals(upper_voice,lower_voice):
@@ -544,11 +527,12 @@ class FirstSpecies:
         j = 1
         protected_indices = []
         best_ctp = ctp_draft.copy()
-        while error >= self.error_threshold and j <= 4:
+        while error >= self.error_threshold and j <= 3:
             error_window = math.inf
             for i in range(len(ctp_draft)):
                 window_n = self._get_indices(i,j)
                 ctp_draft, error = self._path_search(best_ctp.copy(),error,window_n,poss,protected_indices)
+                check = self.ctp_errors
                 if i == 0:
                     error_window = error
                 if error < best_scan_error:
@@ -567,7 +551,6 @@ class FirstSpecies:
         error, ctp_shell = self._search(ctp_shell,poss)
         self.ctp_notes = ctp_shell.copy()
         self.ctp_errors = []
-        self.ctp_weights = self._reset_weights()
         self.error = self.total_penalty(ctp_shell,cf_notes)
 
     def construct_ctp_melody(self,start = 0):
