@@ -58,10 +58,10 @@ class FirstSpecies:
         self.ctp_tonic = cf.start_note+(RANGES.index(self.voice_range)-RANGES.index(cf.voice_range))*Octave
         self.cf_tonic = cf.start_note
         self.cf_direction = [sign(self.cf_notes[i]-self.cf_notes[i-1]) for i in range(1,len(self.cf_notes))]
-        #self.ctp_notes,self.poss = self._initialize_cpt()
         self.ctp_melody = None
         self.ctp_errors = []
         self.error_threshold = 50
+        self.error_idx = []
     """ HELP FUNCTIONS """
 
     def motion(self,idx,upper_voice,lower_voice):
@@ -208,15 +208,16 @@ class FirstSpecies:
             return True
 
     def _is_repeating_pitches(self,ctp_draft):
+        total = 0
         if self.ctp_position == "above":
             for i in range(len(ctp_draft)-1): # was 2
                 if ctp_draft[i] == ctp_draft[i+1]: #== ctp_draft[i+2]:
-                    return True
+                    total += 1
         else:
             for i in range(len(ctp_draft) - 1):
                 if ctp_draft[i] == ctp_draft[i + 1]:
-                    return True
-        return False
+                    total += 1
+        return total
 
     def _is_unique_climax(self,ctp_draft):
         # Unique climax that is different from the cantus firmus
@@ -251,9 +252,9 @@ class FirstSpecies:
         if not self._is_within_range_of_a_tenth(ctp_draft):
             self.ctp_errors.append("Exceeds the range of a tenth!")
             penalty += 100
-        if self._is_repeating_pitches(ctp_draft):
+        if self._is_repeating_pitches(ctp_draft) > 0:
             self.ctp_errors.append("Repeats pitches!")
-            penalty += 75
+            penalty += 25*self._is_repeating_pitches(ctp_draft)
         if not self._is_unique_climax(ctp_draft):
             self.ctp_errors.append("No unique climax or at same position as other voices!")
             penalty += 100
@@ -326,10 +327,11 @@ class FirstSpecies:
         return valid
 
     def _is_unisons_between_terminals(self,ctp):
-        if self.cf_tonic in ctp[1:-1]:
+        return ctp[1:-1].count(self.cf_tonic)
+        """if self.cf_tonic in ctp[1:-1]:
             return True
         else:
-            return False
+            return False"""
 
     def voice_independence_rules(self,ctp_draft,cf_notes):
         if self.ctp_position == "above":
@@ -363,9 +365,9 @@ class FirstSpecies:
         if not self._is_valid_number_of_consecutive_intervals(upper_voice,lower_voice):
             self.ctp_errors.append("Too many consecutive intervals!")
             penalty += 100
-        if self._is_unisons_between_terminals(ctp_draft):
+        if self._is_unisons_between_terminals(ctp_draft) > 0:
             self.ctp_errors.append("Unison between terminals!")
-            penalty += 50
+            penalty += 25*self._is_unisons_between_terminals(ctp_draft)
         return penalty
 
     """ DISSONANT RULES"""
@@ -500,7 +502,7 @@ class FirstSpecies:
         s_w.sort()
         return [s_w[0],s_w[-1]]
 
-    def _path_search(self,ctp_draft,error,search_window,poss,protected_indices):
+    def _path_search(self,ctp_draft,cf_notes,error,search_window,poss,protected_indices):
         paths = []
         if protected_indices != []:
             for idx in protected_indices:
@@ -515,13 +517,13 @@ class FirstSpecies:
         for path in paths:
             ctp_draft[search_window[0]:search_window[1] + 1] = path
             self.ctp_errors = []
-            local_error = self.total_penalty(ctp_draft,self.cf_notes)
+            local_error = self.total_penalty(ctp_draft,cf_notes)
             if  local_error < best_local_error:
                 best_ctp = ctp_draft.copy()
                 best_local_error = local_error
         return best_ctp.copy(), best_local_error
 
-    def _search(self,ctp_draft,poss):
+    def _search(self,ctp_draft,cf_notes,poss):
         error = math.inf
         best_scan_error = math.inf
         j = 1
@@ -531,7 +533,7 @@ class FirstSpecies:
             error_window = math.inf
             for i in range(len(ctp_draft)):
                 window_n = self._get_indices(i,j)
-                ctp_draft, error = self._path_search(best_ctp.copy(),error,window_n,poss,protected_indices)
+                ctp_draft, error = self._path_search(best_ctp.copy(),cf_notes,error,window_n,poss,protected_indices)
                 check = self.ctp_errors
                 if i == 0:
                     error_window = error
@@ -548,7 +550,7 @@ class FirstSpecies:
     def generate_ctp(self):
         cf_notes = self.cf_notes
         ctp_shell, poss = self._initialize_ctp()
-        error, ctp_shell = self._search(ctp_shell,poss)
+        error, ctp_shell = self._search(ctp_shell,cf_notes,poss)
         self.ctp_notes = ctp_shell.copy()
         self.ctp_errors = []
         self.error = self.total_penalty(ctp_shell,cf_notes)
