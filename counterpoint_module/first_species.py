@@ -60,7 +60,7 @@ class FirstSpecies:
         self.cf_direction = [sign(self.cf_notes[i]-self.cf_notes[i-1]) for i in range(1,len(self.cf_notes))]
         self.ctp_melody = None
         self.ctp_errors = []
-        self.error_threshold = 50
+        self.ERROR_THRESHOLD = 50
         self.error_idx = []
     """ HELP FUNCTIONS """
 
@@ -201,6 +201,13 @@ class FirstSpecies:
         else:
             return True
 
+    def _is_chromatic_step(self,ctp_draft,idx):
+        if idx >= len(ctp_draft)-1:
+            return False
+        if abs(ctp_draft[idx+1]-ctp_draft[idx]) == 1 and ctp_draft[idx+1] not in self.scale_pitches:
+            return True
+        return False
+
     def _is_within_range_of_a_tenth(self,ctp_draft):
         if max(ctp_draft) - min(ctp_draft) >= Octave+M3:
             return False
@@ -248,6 +255,9 @@ class FirstSpecies:
                 if not self._is_successive_leaps_valid(ctp_draft,i):
                     self.ctp_errors.append("Successive leaps strictly not valid!")
                     penalty += 100
+            if self._is_chromatic_step(ctp_draft,i):
+                self.ctp_errors.append("Chromatic movement!")
+                penalty += 100
         # Global rules
         if not self._is_within_range_of_a_tenth(ctp_draft):
             self.ctp_errors.append("Exceeds the range of a tenth!")
@@ -529,7 +539,7 @@ class FirstSpecies:
         j = 1
         protected_indices = []
         best_ctp = ctp_draft.copy()
-        while error >= self.error_threshold and j <= 3:
+        while error >= self.ERROR_THRESHOLD and j <= 3:
             error_window = math.inf
             for i in range(len(ctp_draft)):
                 window_n = self._get_indices(i,j)
@@ -540,7 +550,7 @@ class FirstSpecies:
                 if error < best_scan_error:
                     best_ctp = ctp_draft.copy()
                     best_scan_error = error
-                    if error < self.error_threshold:
+                    if error < self.ERROR_THRESHOLD:
                         return best_scan_error, best_ctp
             if error_window <= best_scan_error:
                 # No improvement, expand the window

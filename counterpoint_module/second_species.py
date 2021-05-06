@@ -15,7 +15,7 @@ class SecondSpecies(FirstSpecies):
     def __init__(self,cf,ctp_position = "above"):
         super(SecondSpecies,self).__init__(cf,ctp_position)
         super(SecondSpecies,self).generate_ctp()
-        self.error_threshold = 100
+        self.ERROR_THRESHOLD = 100
 
     """ HELP FUNCTIONS"""
     def get_downbeats(self):
@@ -113,95 +113,12 @@ class SecondSpecies(FirstSpecies):
 
     """ DISSONANT RULES"""
 
-    def dissonant_rules(self, ctp_draft):
-        db = self.get_downbeats()
-        # In first species there is no dissonance, so the allowed harmonic intervals are consonances
-        return 0
 
     """ HARMONIC RULES """
 
-    def _is_valid_terminals(self, ctp_draft, cf_notes):
-        # check start and end pitches and see if they are valid
-        # must begin and end with perfect consonances (octaves, fifths or unison)
-        # Octaves or unisons preferred at the end (i.e. perfect fifth not allowed)
-        # if below, the start and end must be the octave the cf
-        if self.ctp_position == "above":
-            if (ctp_draft[0] - cf_notes[0] not in [Unison, P5, Octave]) or (
-                    ctp_draft[-1] - cf_notes[-1] not in [Unison, Octave]):
-                return False
-            else:
-                return True
-        else:
-            if (cf_notes[0] - ctp_draft[0] not in [Unison, Octave]) or (
-                    cf_notes[-1] - ctp_draft[-1] not in [Unison, Octave]):
-                return False
-            else:
-                return True
-
-    def _no_outlined_tritone(self, ctp_draft):
-        outline_idx = [0]
-        outline_intervals = []
-        not_allowed_intervals = [Tritone, m7, M7]
-        # mellom ytterkant og inn + endring innad
-        dir = [sign(ctp_draft[i + 1] - ctp_draft[i]) for i in range(len(ctp_draft) - 1)]
-        for i in range(len(dir) - 1):
-            if dir[i] != dir[i + 1]:
-                outline_idx.append(i + 1)
-        outline_idx.append(len(ctp_draft) - 1)
-        # Iterate over the outline indices and check if a tritone is found
-        for i in range(len(outline_idx) - 1):
-            outline_intervals.append(abs(ctp_draft[outline_idx[i]] - ctp_draft[outline_idx[i + 1]]))
-
-        for interval in not_allowed_intervals:
-            if interval in outline_intervals:
-                return False
-
-        return True
-
-    def harmonic_rules(self, ctp_draft, cf_notes):
-        penalty = 0
-        if not self._is_valid_terminals(ctp_draft, cf_notes):
-            self.ctp_errors.append("Terminals not valid!")
-            penalty += 100
-        if not self._no_outlined_tritone(ctp_draft):
-            self.ctp_errors.append("Outlined dissonant interval!")
-            penalty += 100
-        return penalty
-
     """ TOTAL PENALTY"""
 
-    def total_penalty(self, ctp_draft, cf_notes):
-        penalty = 0
-        penalty += self.melodic_rules(ctp_draft)
-        penalty += self.voice_independence_rules(ctp_draft, cf_notes)
-        penalty += self.dissonant_rules(ctp_draft)
-        penalty += self.harmonic_rules(ctp_draft, cf_notes)
-        return penalty
-
     """ HELP FUNCTIONS FOR INITIALIZING COUNTERPOINT"""
-
-    def _start_notes(self):
-        if self.ctp_position == "above":
-            return [self.cf_tonic, self.cf_tonic + P5, self.cf_tonic + Octave]
-        else:
-            return [self.cf_tonic - Octave, self.cf_tonic]
-
-    def _end_notes(self):
-        if self.ctp_position == "above":
-            return [self.cf_tonic, self.cf_tonic + Octave]
-        else:
-            return [self.cf_tonic, self.cf_tonic - Octave]
-
-    def _penultimate_notes(self, cf_end):  # Bug in penultimate
-        if self.ctp_position == "above":
-            s = 1
-        else:
-            s = -1
-        if self.cf_direction[-1] == 1.0:
-            penultimate = cf_end + 2
-        else:
-            penultimate = cf_end - 1
-        return [penultimate, penultimate + s * Octave]
 
     def get_harmonic_possibilities2(self, idx, cf_notes,ctp_notes):
         poss = super(SecondSpecies,self).get_harmonic_possibilities(cf_notes[idx])
@@ -214,9 +131,9 @@ class SecondSpecies(FirstSpecies):
                     s = sign(ctp_notes[idx+1]-ctp_notes[idx-1])
                     s = int(s)
                     if ctp_notes[idx-1] + s*m2 in self.scale_pitches:
-                        poss.append(ctp_notes[idx-1]+m2)
+                        poss.append(ctp_notes[idx-1]+s*m2)
                     if ctp_notes[idx-1] + s*M2 in self.scale_pitches:
-                        poss.append(ctp_notes[idx-1]+M2)
+                        poss.append(ctp_notes[idx-1]+s*M2)
         else:
             poss = [ctp_notes[idx]]
         return poss
@@ -251,6 +168,7 @@ class SecondSpecies(FirstSpecies):
         for p in poss:
             ctp_notes.append(rm.choice(p))
         return ctp_notes, poss
+
     def _path_search2(self,ctp_draft,cf_notes,error,search_window,poss,protected_indices):
         paths = []
         search_window = search_window
@@ -279,7 +197,7 @@ class SecondSpecies(FirstSpecies):
         j = 1
         protected_indices = []
         best_ctp = ctp_draft.copy()
-        while error >= self.error_threshold and j <= 9:
+        while error >= self.ERROR_THRESHOLD and j <= 9:
             error_window = math.inf
             for i in range(len(ctp_draft)):
                 window_n = self._get_indices(i,j)
@@ -290,14 +208,14 @@ class SecondSpecies(FirstSpecies):
                 if error < best_scan_error:
                     best_ctp = ctp_draft.copy()
                     best_scan_error = error
-                    if error < self.error_threshold:
+                    if error < self.ERROR_THRESHOLD:
                         return best_scan_error, best_ctp
             if error_window <= best_scan_error:
                 # No improvement, expand the window
                 j += 1
         return best_scan_error,best_ctp
 
-    def generate_ctp(self):
+    def generate_ctp(self, post_ornaments = True):
         print("cf notes in generate_ctp: ",self.cf_notes)
         print("ctp notes in generate_ctp:",self.ctp_notes)
         print("first species error: ",self.error)
@@ -312,11 +230,12 @@ class SecondSpecies(FirstSpecies):
         print("ctp error score: ",self.error)
         print("ctp_notes: ",self.ctp_notes)
         print("error idx: ",self.error_idx)
-        self.ctp_notes[0] = -1
-        self.ctp_notes[-2] = self.ctp_notes[-1]
-        self.ctp_notes.pop(-1)
-        self.melody_rhythm.pop(-1)
-        self.melody_rhythm[-1] = 8
+        if post_ornaments:
+            self.ctp_notes[0] = -1
+            self.ctp_notes[-2] = self.ctp_notes[-1]
+            self.ctp_notes.pop(-1)
+            self.melody_rhythm.pop(-1)
+            self.melody_rhythm[-1] = 8
 
 """cf = Cantus_Firmus("C","major",bar_length = 2)
 cf.generate_cf()

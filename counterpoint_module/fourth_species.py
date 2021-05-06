@@ -22,11 +22,3 @@ class FourthSpecies(FirstSpecies):
         self.ctp_notes.insert(0,-1)
 
 
-cf = Cantus_Firmus("C","major",bar_length =1)
-cf.generate_cf()
-print("cf rhythm:",cf.melody_rhythm)
-print("cf mel: ",cf.melody)
-fourths = FourthSpecies(cf)
-fourths.construct_ctp_melody(0)
-print(fourths.ctp_notes)
-print("cf mel after: ",fourths.cf.melody_rhythm)
