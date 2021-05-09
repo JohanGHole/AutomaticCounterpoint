@@ -1,40 +1,40 @@
 from counterpoint_module.second_species import *
 
-class ThirdSpecies(SecondSpecies):
+class ThirdSpecies(FirstSpecies):
     def __init__(self,cf,ctp_position = "above"):
         super(ThirdSpecies,self).__init__(cf,ctp_position)
-        super(ThirdSpecies,self).generate_ctp(post_ornaments=False)
-        self.ERROR_THRESHOLD = 200
+        self.ERROR_THRESHOLD = 5000
+        self.MAX_SEARCH_WIDTH = 5
 
-    def get_harmonic_possibilities3(self, idx, cf_notes,ctp_notes):
-        poss = super(ThirdSpecies,self).get_harmonic_possibilities(cf_notes[idx])
-        upbeats = self.get_upbeats()
-        if idx in upbeats:
-            if idx != 1:
-                poss = super(SecondSpecies, self).get_harmonic_possibilities(cf_notes[idx])
-                if abs(ctp_notes[idx+1]-ctp_notes[idx-1]) in [m3,M3]:
-                    s = sign(ctp_notes[idx+1]-ctp_notes[idx-1])
-                    s = int(s)
-                    if ctp_notes[idx-1] + s*m2 in self.scale_pitches:
-                        poss.append(ctp_notes[idx-1]+s*m2)
-                    if ctp_notes[idx-1] + s*M2 in self.scale_pitches:
-                        poss.append(ctp_notes[idx-1]+s*M2)
-        return poss
-    def _possible_notes3(self):
+    def _possible_notes(self):
         poss = [None for elem in self.cf_notes]
         first_beats = [i for i in range(len(poss)) if i % 4 == 0]
         print("first beats:", first_beats)
         for i in range(len(self.cf_notes)):
             if i in first_beats or i == 1:
-                poss[i] = [self.ctp_notes[i]]
+                poss[i] = self._start_notes()
             elif i == len(self.cf_notes) - 5:
-                poss[i] = [self.ctp_notes[i]]
+                poss[i] = self._penultimate_notes(cf_end=self.cf_notes[-1])
             elif i == len(self.cf_notes) - 1 or i == len(self.cf_notes)-2:
-                poss[i] = [self.ctp_notes[i]]
+                poss[i] = self._end_notes()
             else:
-                poss[i] = self.get_harmonic_possibilities3(i, self.cf_notes,self.ctp_notes)
+                poss[i] = self.get_harmonic_possibilities(self.cf_notes[i])
         return poss
-    def _initialize_ctp3(self):
+    def get_rhythm(self):
+        self.cf_notes =[ele for ele in self.cf_notes for i in range(4)]
+        return [2] * len(self.cf_notes)
+    def post_ornaments(self):
+        self.ctp_notes[0] = -1
+        self.ctp_notes[-4] = self.ctp_notes[-1]
+        self.ctp_notes.pop(-1)
+        self.ctp_notes.pop(-1)
+        self.ctp_notes.pop(-1)
+        self.melody_rhythm.pop(-1)
+        self.melody_rhythm.pop(-1)
+        self.melody_rhythm.pop(-1)
+        self.melody_rhythm[-1] = 8
+
+    """def _initialize_ctp3(self):
         # Expanding the already generated first species results:
         self.melody_rhythm = [2]*len(self.cf.melody_rhythm)*4
         self.ctp_notes = [ele for ele in self.ctp_notes for i in range(2)]
@@ -113,15 +113,7 @@ class ThirdSpecies(SecondSpecies):
         print("ctp_notes: ",self.ctp_notes)
         print("error idx: ",self.error_idx)
         if post_ornaments:
-            self.ctp_notes[0] = -1
-            self.ctp_notes[-4] = self.ctp_notes[-1]
-            self.ctp_notes.pop(-1)
-            self.ctp_notes.pop(-1)
-            self.ctp_notes.pop(-1)
-            self.melody_rhythm.pop(-1)
-            self.melody_rhythm.pop(-1)
-            self.melody_rhythm.pop(-1)
-            self.melody_rhythm[-1] = 8
+            """
 
 """cf = Cantus_Firmus("C","major",bar_length = 1)
 cf.generate_cf()
