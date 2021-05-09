@@ -1,28 +1,30 @@
 from counterpoint_module.second_species import *
 
-class ThirdSpecies(FirstSpecies):
+class ThirdSpecies(SecondSpecies):
     def __init__(self,cf,ctp_position = "above"):
         super(ThirdSpecies,self).__init__(cf,ctp_position)
-        self.ERROR_THRESHOLD = 5000
-        self.MAX_SEARCH_WIDTH = 5
+        self.ERROR_THRESHOLD = 100
+        self.MAX_SEARCH_WIDTH = 3
 
     def _possible_notes(self):
         poss = [None for elem in self.cf_notes]
         first_beats = [i for i in range(len(poss)) if i % 4 == 0]
         print("first beats:", first_beats)
         for i in range(len(self.cf_notes)):
-            if i in first_beats or i == 1:
+            if i == 0 or i == 1:
                 poss[i] = self._start_notes()
             elif i == len(self.cf_notes) - 5:
                 poss[i] = self._penultimate_notes(cf_end=self.cf_notes[-1])
             elif i == len(self.cf_notes) - 1 or i == len(self.cf_notes)-2:
                 poss[i] = self._end_notes()
             else:
-                poss[i] = self.get_harmonic_possibilities(self.cf_notes[i])
+                poss[i] = self.get_harmonic_possibilities(i,self.cf_notes)
         return poss
+
     def get_rhythm(self):
         self.cf_notes =[ele for ele in self.cf_notes for i in range(4)]
         return [2] * len(self.cf_notes)
+
     def post_ornaments(self):
         self.ctp_notes[0] = -1
         self.ctp_notes[-4] = self.ctp_notes[-1]

@@ -80,11 +80,11 @@ E_major_Ctp.to_instrument()
 E_major_Ctp.export_to_midi(tempo = 120, name = "generated_midi/first_species/F_minor_choir.mid")
 """
 def large_test_four_voices(cf_range,num_voices):
-    inst = ["Choir Aahs"]*4
+    inst = ["Harpsichord"]*4
     for i in range(12):
-        ctp = Counterpoint(KEY_NAMES[i%len(KEY_NAMES)],"major",above = True, num_voices = num_voices,cf_range = cf_range, bar_length = 2)
+        ctp = Counterpoint(KEY_NAMES[i%len(KEY_NAMES)],"major",above = True, num_voices = num_voices,cf_range = cf_range, bar_length = 1)
         ctp.set_instrument(inst)
         ctp.to_instrument()
-        ctp.export_to_midi(tempo = 120, name = "generated_midi/third_species/test"+str(i)+".mid")
+        ctp.export_to_midi(tempo = 120, name = "generated_midi/third_species/test"+str(i+1)+".mid")
 
 large_test_four_voices(RANGES[TENOR],2)

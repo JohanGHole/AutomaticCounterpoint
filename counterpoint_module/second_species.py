@@ -115,7 +115,28 @@ class SecondSpecies(FirstSpecies):
         return total
 
     """ DISSONANT RULES"""
-
+    def dissonance_handling(self,cf_notes,ctp_draft):
+        # In second species dissonances are allowed if they are approached and left by step
+        penalty = 0
+        if self.ctp_position == "above":
+            upper = ctp_draft
+            lower = cf_notes
+        else:
+            upper = cf_notes
+            lower = ctp_draft
+        for i in range(1,len(ctp_draft)-1):
+            current_note = ctp_draft[i]
+            if upper[i]-lower[i] in self.dissonant_intervals:
+                prev_note = ctp_draft[i - 1]
+                next_note = ctp_draft[i + 1]
+                if abs(current_note-prev_note) <= M2 and abs(next_note-current_note) <= M2:
+                    if sign(current_note-prev_note) != sign(next_note-current_note):
+                        self.ctp_errors.append("Dissonance not properly approached or left!")
+                        penalty += 100
+                else:
+                    self.ctp_errors.append("Invalid dissonance!")
+                    penalty += 100
+        return penalty
 
     """ HARMONIC RULES """
 
@@ -128,10 +149,13 @@ class SecondSpecies(FirstSpecies):
         upbeats = self.get_upbeats()
         if idx in upbeats:
             if idx != 1:
-                poss = super(SecondSpecies, self).get_harmonic_possibilities(cf_notes[idx])
                 for diss in self.dissonant_intervals:
-                    if cf_notes[idx]+diss in self.scale_pitches:
-                        poss.append(cf_notes[idx]+diss)
+                    if self.ctp_position == "above":
+                        if cf_notes[idx]+diss in self.scale_pitches:
+                            poss.append(cf_notes[idx]+diss)
+                    else:
+                        if cf_notes[idx]-diss in self.scale_pitches:
+                            poss.append(cf_notes[idx]-diss)
         return poss
 
     def _possible_notes(self):

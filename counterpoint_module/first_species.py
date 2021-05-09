@@ -382,7 +382,7 @@ class FirstSpecies:
         return penalty
 
     """ DISSONANT RULES"""
-    def dissonant_rules(self,ctp_draft):
+    def dissonance_handling(self,cf_notes,ctp_draft):
         # In first species there is no dissonance, so the allowed harmonic intervals are consonances
         return 0
 
@@ -438,7 +438,7 @@ class FirstSpecies:
         penalty = 0
         penalty += self.melodic_rules(ctp_draft)
         penalty += self.voice_independence_rules(ctp_draft,cf_notes)
-        penalty += self.dissonant_rules(ctp_draft)
+        penalty += self.dissonance_handling(cf_notes,ctp_draft)
         penalty += self.harmonic_rules(ctp_draft,cf_notes)
         return penalty
 
@@ -576,9 +576,9 @@ class FirstSpecies:
             self.ctp_notes = ctp_shell.copy()
             self.ctp_errors = []
             self.error = self.total_penalty(ctp_shell,cf_notes)
-            print("error score:",self.error)
-            print("errors: ",self.ctp_errors)
             global_score = self.error
+        print("error score:", self.error)
+        print("errors: ", self.ctp_errors)
         if post_ornaments:
             self.post_ornaments()
 
