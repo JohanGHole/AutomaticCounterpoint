@@ -85,6 +85,6 @@ def large_test_four_voices(cf_range,num_voices):
         ctp = Counterpoint(KEY_NAMES[i%len(KEY_NAMES)],"major",above = True, num_voices = num_voices,cf_range = cf_range, bar_length = 1)
         ctp.set_instrument(inst)
         ctp.to_instrument()
-        ctp.export_to_midi(tempo = 120, name = "generated_midi/third_species/test"+str(i+1)+".mid")
+        ctp.export_to_midi(tempo = 120, name = "generated_midi/third_species/test"+str(i+13)+".mid")
 
 large_test_four_voices(RANGES[TENOR],2)
