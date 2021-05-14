@@ -53,8 +53,11 @@ class Note:
         else:
             return self.end - self.start
 
-    def transpose(self, i):
-        self.pitch += i
+    def transpose(self, i, inPlace = False):
+        if inPlace:
+            self.pitch += i
+        else:
+            return Note(self.pitch+i,self.start,self.end,self.velocity)
 
     def to_instrument(self, instrument):
         # adds the note to the given instrument
@@ -64,6 +67,7 @@ class Note:
         note = pretty_midi.Note(velocity=self.velocity, pitch=self.pitch, start=self.start, end=self.end)
         instrument.notes.append(note)
 
+    """ USED IN EARLY TESTING """
     def to_midi(self, tempo=120, name="music_module/test.mid", program=0, instrument=None, pm=None):
         if instrument == None:
             inst = pretty_midi.Instrument(program=program, is_drum=False)
