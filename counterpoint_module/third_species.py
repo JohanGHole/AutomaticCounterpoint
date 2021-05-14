@@ -5,7 +5,7 @@ class ThirdSpecies(SecondSpecies):
         super(ThirdSpecies,self).__init__(cf,ctp_position)
         self.ERROR_THRESHOLD = 100
         self.MAX_SEARCH_WIDTH = 3
-
+        self.species = "third"
     def _possible_notes(self):
         poss = [None for elem in self.cf_notes]
         first_beats = [i for i in range(len(poss)) if i % 4 == 0]

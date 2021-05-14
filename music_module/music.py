@@ -274,7 +274,7 @@ class Melody:
         self.start = start
         self.bar_length = float(bar_length)
         if melody_notes == None:
-            num_bars = rm.randint(4, 8)
+            num_bars = rm.randint(8, 12)
             mel = [60 for i in range(num_bars)]
             self.melody = mel
         else:

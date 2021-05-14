@@ -9,11 +9,12 @@ TODO:
 
 
 """
-from counterpoint_module.first_species import *
+from counterpoint_module.Counterpoint import *
 
-class SecondSpecies(FirstSpecies):
+class SecondSpecies(Counterpoint):
     def __init__(self,cf,ctp_position = "above"):
         super(SecondSpecies,self).__init__(cf,ctp_position)
+        self.species = "second"
         self.ERROR_THRESHOLD = 100
         self.MAX_SEARCH_WIDTH = 3
 
@@ -24,20 +25,6 @@ class SecondSpecies(FirstSpecies):
     def get_upbeats(self):
         indices = list(range(len(self.cf_notes)))
         return indices[1::2]
-    """ MELODIC RULES """
-
-    def _is_motivic_repetitions(self, ctp_draft):
-        for i in range(len(ctp_draft) - 3):
-            if ctp_draft[i:i + 2] == ctp_draft[i + 2:i + 4]:
-                return True
-        return False
-
-    def melodic_rules(self, ctp_draft):
-        penalty = super(SecondSpecies,self).melodic_rules(ctp_draft)
-        if self._is_motivic_repetitions(ctp_draft):
-            self.ctp_errors.append("Motivic repetitions!")
-            penalty += 25
-        return penalty
 
     """ RHYTHMIC RULES """
     def get_rhythm(self):
@@ -45,107 +32,12 @@ class SecondSpecies(FirstSpecies):
         return [4] * len(self.cf_notes)
 
     """ VOICE INDEPENDENCE RULES """
-
-    def _is_parallel_perfects_on_downbeats(self,ctp_draft, upper_voice, lower_voice):
-        db = self.get_downbeats()
-        for i in range(len(db) - 1):
-            interval1 = upper_voice[db[i]] - lower_voice[db[i]]
-            interval2 = upper_voice[db[i + 1]] - lower_voice[db[i + 1]]
-            if interval1 == interval2 and interval1 in self.perfect_intervals:
-                # consecutive perfects on downbeats
-                if upper_voice[db[i + 1]] - upper_voice[db[i]] == lower_voice[db[i + 1]] - lower_voice[db[i]]:
-                    # consecutive and parallel
-                    if ctp_draft[db[i]] - ctp_draft[db[i] + 1] > M3:
-                        return False
-                    else:
-                        return True
-                return False
-        return False
-    def _is_perfect_interval_properly_approached(self,upper_voice,lower_voice,idx):
-        if idx == 0 or idx == 1 or idx == len(upper_voice)-2 or idx == len(upper_voice)-1: # the start interval MUST be a perfect interval and is therefore allowed
-            return True
-        if upper_voice[idx]-lower_voice[idx] in self.perfect_intervals:
-            if self.motion(idx,upper_voice,lower_voice) not in ["oblique","contrary"]:
-                self.error_idx.append(idx)
-                return False
-            if self._is_large_leap(upper_voice,idx-1) or self._is_large_leap(lower_voice,idx-1):
-                if upper_voice[idx]-lower_voice[idx] == Octave:
-                    if self.motion(idx,upper_voice,lower_voice) == "oblique" or idx == len(upper_voice)-1:
-                        return True
-                else:
-                    self.error_idx.append(idx)
-                    return False
-        return True
-
-    def _is_valid_consecutive_perfect_intervals(self,upper_voice,lower_voice,idx):
-        if idx >= len(upper_voice) - 2 or idx == 0:
-            return True
-        harm_int1 = upper_voice[idx]-lower_voice[idx]
-        harm_int2 = upper_voice[idx+1]-lower_voice[idx+1]
-        if harm_int1 in self.perfect_intervals and  harm_int2 in self.perfect_intervals:
-            if self._is_step(upper_voice,idx) or self._is_step(lower_voice,idx):
-                return True
-            else:
-                return False
-                self.error_idx.append(idx)
-        return True
-    def voice_independence_rules(self, ctp_draft, cf_notes):
-        if self.ctp_position == "above":
-            upper_voice = ctp_draft
-            lower_voice = cf_notes
-        else:
-            upper_voice = cf_notes
-            lower_voice = ctp_draft
-        penalty = super(SecondSpecies,self).voice_independence_rules(ctp_draft,cf_notes)
-        if self._is_parallel_perfects_on_downbeats(ctp_draft,upper_voice,lower_voice):
-            self.ctp_errors.append("Parallel perfect intervals on downbeats!")
-            penalty += 100
-        return penalty
     """ MELODIC RULES """
-    def _is_repeating_pitches(self,ctp_draft):
-        total = 0
-        if self.ctp_position == "above":
-            for i in range(len(ctp_draft)-2): # was 2
-                if ctp_draft[i] == ctp_draft[i+1] and i != 0: #== ctp_draft[i+2]:
-                    total += 1
-        else:
-            for i in range(len(ctp_draft) - 2):
-                if ctp_draft[i] == ctp_draft[i + 1] and i != 0:
-                    total += 1
-        return total
-
-    """ DISSONANT RULES"""
-    def dissonance_handling(self,cf_notes,ctp_draft):
-        # In second species dissonances are allowed if they are approached and left by step
-        penalty = 0
-        if self.ctp_position == "above":
-            upper = ctp_draft
-            lower = cf_notes
-        else:
-            upper = cf_notes
-            lower = ctp_draft
-        for i in range(1,len(ctp_draft)-1):
-            current_note = ctp_draft[i]
-            if upper[i]-lower[i] in self.dissonant_intervals:
-                prev_note = ctp_draft[i - 1]
-                next_note = ctp_draft[i + 1]
-                if abs(current_note-prev_note) <= M2 and abs(next_note-current_note) <= M2:
-                    if sign(current_note-prev_note) != sign(next_note-current_note):
-                        self.ctp_errors.append("Dissonance not properly approached or left!")
-                        penalty += 100
-                else:
-                    self.ctp_errors.append("Invalid dissonance!")
-                    penalty += 100
-        return penalty
-
-    """ HARMONIC RULES """
-
-    """ TOTAL PENALTY"""
 
     """ HELP FUNCTIONS FOR INITIALIZING COUNTERPOINT"""
 
     def get_harmonic_possibilities(self, idx, cf_notes):
-        poss = super(SecondSpecies,self).get_harmonic_possibilities(cf_notes[idx])
+        poss = super(SecondSpecies,self).get_consonant_possibilities(cf_notes[idx])
         upbeats = self.get_upbeats()
         if idx in upbeats:
             if idx != 1:

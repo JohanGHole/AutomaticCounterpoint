@@ -4,8 +4,6 @@ from music_module.constants import *
 import random as rm
 import math
 from time import time
-def sign(x):
-    return math.copysign(1, x)
 
 class Cantus_Firmus(m.Melody):
     # Some constants for easy access
@@ -27,6 +25,7 @@ class Cantus_Firmus(m.Melody):
         else:
             self.melody_rhythm = [8]*self.length
         self.cf_errors = []
+
     def _start_note(self):
         """
 
