@@ -21,29 +21,6 @@ class FirstSpecies(Counterpoint):
 
     """ HELP FUNCTIONS FOR INITIALIZING COUNTERPOINT"""
 
-    def _start_notes(self):
-        if self.ctp_position == "above":
-            return [self.cf_tonic,self.cf_tonic + P5, self.cf_tonic + Octave]
-        else:
-            return [self.cf_tonic - Octave,self.cf_tonic]
-
-    def _end_notes(self):
-        if self.ctp_position == "above":
-            return [self.cf_tonic, self.cf_tonic + Octave]
-        else:
-            return [self.cf_tonic, self.cf_tonic - Octave]
-
-    def _penultimate_notes(self, cf_end):  # Bug in penultimate
-        if self.ctp_position == "above":
-            s = 1
-        else:
-            s = -1
-        if self.cf_direction[-1] == 1.0:
-            penultimate = cf_end + 2
-        else:
-            penultimate = cf_end - 1
-        return [penultimate, penultimate + s * Octave]
-
     def get_harmonic_possibilities(self,cf_note):
         poss = []
         for interval in self.harmonic_consonances:

@@ -23,7 +23,7 @@ class Player:
         self.voices = [None, None, None, None]
         self.loaded_instruments = [None, None, None, None]
         self.voices[self.cf_range_name] = self.cf
-        ctp = ThirdSpecies(self.cf,ctp_position = ctp_position)#SecondSpecies(self.cf,ctp_position = "above")#FirstSpecies(self.cf,ctp_position = "above")
+        ctp = FourthSpecies(self.cf,ctp_position = ctp_position)#SecondSpecies(self.cf,ctp_position = "above")#FirstSpecies(self.cf,ctp_position = "above")
         ctp.generate_ctp()
         ctp.construct_ctp_melody(0)
         self.voices[self.cf_range_name + 1] = ctp.ctp_melody

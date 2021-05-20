@@ -29,4 +29,11 @@ def _is_parallel_perfects_on_downbeats(ctp_draft, upper_voice, lower_voice):
 
     return False
 
-print(_is_parallel_perfects_on_downbeats(ctp_draft,ctp_draft,cf))
+rhythm = [4,6,2,2,2,2,2,6,2,2,2,2,2,2,2,2,2,8,4,4]
+
+def cf_index(ctp_index):
+    # Inputs the cf_index and returns
+    print("ctp_index..",sum(rhythm[:ctp_index]))
+    return int((sum(rhythm[:ctp_index+1]) / 8))
+
+print(cf_index(1))

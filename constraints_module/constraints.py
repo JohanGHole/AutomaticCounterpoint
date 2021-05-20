@@ -18,12 +18,12 @@ class Constraints:
     def _get_numb_start_idx(self):
         if SPECIES[self.species] == 1:
             return [0]
-        elif SPECIES[self.species] == 2 or SPECIES[self.species] == 3:
+        elif SPECIES[self.species] in [2,3,4]:
             return [0,1]
     def _get_numb_end_idx(self):
         if SPECIES[self.species] == 1:
             return [len(self.cf_notes)-1]
-        elif SPECIES[self.species] == 2:
+        elif SPECIES[self.species] in [2,4]:
             return [len(self.cf_notes)-2,len(self.cf_notes)-1]
         elif SPECIES[self.species] == 3:
             return [len(self.cf_notes)-4,len(self.cf_notes)-3,len(self.cf_notes)-2,len(self.cf_notes)-1]
@@ -88,6 +88,9 @@ class Constraints:
             return True
         return False
 
+    def get_firstbeats(self):
+        indices = list(range(len(self.cf_notes)))
+        return indices[::4]
     def get_downbeats(self):
         indices = list(range(len(self.cf_notes)))
         return indices[::2]
@@ -194,7 +197,10 @@ class Constraints:
                 if i in self.start_idx or i in self.end_idx:
                     total += 0
                 elif ctp_draft[i] == ctp_draft[i + 1]:  # == ctp_draft[i+2]:
-                    total += 1
+                    if SPECIES[self.species] == 4 and i in self.get_upbeats():
+                        total += 0
+                    else:
+                        total += 1
         else:
             for i in range(len(ctp_draft) - 1):
                 if ctp_draft[i] == ctp_draft[i + 1]:
@@ -203,9 +209,12 @@ class Constraints:
 
     def _is_unique_climax(self, ctp_draft):
         # Unique climax that is different from the cantus firmus
-        if ctp_draft.count(max(ctp_draft)) == 1 and (
-                ctp_draft.index(max(ctp_draft)) != self.cf_notes.index(max(self.cf_notes))):
-            return True
+        if SPECIES[self.species] not in [4,5]:
+            if ctp_draft.count(max(ctp_draft)) == 1 and ctp_draft.index(max(ctp_draft)) != self.cf_notes.index(max(self.cf_notes)):
+                return True
+        elif SPECIES[self.species] in [4,5]:
+            if ctp_draft.count(max(ctp_draft)) == 2:
+                return True
         else:
             return False
 
@@ -322,14 +331,13 @@ class Constraints:
 
     def _is_unisons_between_terminals(self, ctp):
         return ctp[1:-1].count(self.cf_tonic)
-        """if self.cf_tonic in ctp[1:-1]:
-            return True
-        else:
-            return False"""
 
     """ SECOND SPECIES"""
     def _is_parallel_perfects_on_downbeats(self,ctp_draft, upper_voice, lower_voice):
-        db = self.get_downbeats()
+        if SPECIES[self.species] == 2 or SPECIES[self.species] == 4:
+            db = self.get_downbeats()
+        else:
+            db = self.get_firstbeats()
         for i in range(len(db) - 1):
             interval1 = upper_voice[db[i]] - lower_voice[db[i]]
             interval2 = upper_voice[db[i + 1]] - lower_voice[db[i + 1]]
@@ -387,6 +395,40 @@ class Constraints:
         return penalty
 
     """ DISSONANT RULES"""
+    def _note_not_tied(self,ctp_draft):
+        penalty = 0
+        not_tied_notes = 0
+        for i in range(len(ctp_draft)-1):
+            if i == 0 or i in self.end_idx:
+                penalty += 0
+            elif i in self.get_upbeats() and ctp_draft[i] != ctp_draft[i+1]:
+                not_tied_notes += 1
+        if not_tied_notes > 2 :
+            self.ctp_errors.append("Note is not tied!")
+            penalty += 500*not_tied_notes
+        return penalty
+
+    def _tied_note_properly_resolved(self,cf_notes,ctp_draft):
+        penalty = 0
+        if self.ctp_position == "above":
+            upper = ctp_draft
+            lower = cf_notes
+        else:
+            upper = cf_notes
+            lower = ctp_draft
+        for i in range(len(ctp_draft)-1):
+            if i in self.start_idx or i in self.end_idx:
+                penalty += 0
+            elif i in self.get_downbeats():
+                if  upper[i]-lower[i] in self.harmonic_consonances:
+                    penalty += 0
+                else:
+                    if (ctp_draft[i+1] - ctp_draft[i]) < 0 and self._is_step(ctp_draft,i):
+                        penalty += 0
+                    else:
+                        self.ctp_errors.append("Dissonance not properly resolved")
+                        penalty += 100
+        return penalty
 
     def _dissonance_handling(self, cf_notes, ctp_draft):
         penalty = 0
@@ -413,6 +455,9 @@ class Constraints:
                     else:
                         self.ctp_errors.append("Invalid dissonance!")
                         penalty += 100
+        if SPECIES[self.species] == 4:
+            penalty += self._note_not_tied(ctp_draft)
+            penalty += self._tied_note_properly_resolved(cf_notes,ctp_draft)
         return penalty
 
     def _is_cambiata(self,idx, cf_notes,ctp_draft):

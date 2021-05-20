@@ -1,8 +1,8 @@
 from counterpoint_module.Counterpoint import *
-class FourthSpecies(Counterpoint):
+class FifthSpecies(Counterpoint):
     def __init__(self,cf,ctp_position = "above"):
-        super(FourthSpecies, self).__init__(cf,ctp_position)
-        self.species = "fourth"
+        super(FifthSpecies, self).__init__(cf,ctp_position)
+        self.species = "fifth"
         self.ERROR_THRESHOLD = 100
         self.MAX_SEARCH_WIDTH = 3
 
@@ -15,18 +15,45 @@ class FourthSpecies(Counterpoint):
     def get_upbeats(self):
         indices = list(range(len(self.cf_notes)))
         return indices[1::2]
+    def _build_measure(self,i,tied,last_note):
+        measure = []
+        tied_forward = False
+        while sum(measure)
+        if i == 0:
+            measure.append(4)
+            if rm.uniform(0,1) < 0.5:
+                measure.append(4)
+            else:
+                measure.append(4)
+                tied_forward = True
+
 
     """ RHYTHMIC RULES """
+    def _build_measures(self,cf_notes):
+        " There are in all 8 time slots for each measure"
+        " The passage should not begin with rapid notes"
+        " No anapest rhythm (short short long) unless the long note is tied forward"
+        " Begin in half rest"
+        " If tied, the note tied forward should be half the length. except at final cadence"
+        " Max 2 eight notes, and they must always be on beat 2 and 4"
+        " if sum = 2 or sum = 6"
+        rhythm = [[4,4],[2,2,4],[4,2,2],[2,1,1,2,2],[4,4],[2,1,1,4],[2,1,1,2,2,],[4,4],[4,4],
+                  [2,2,4],[4,4],[2,2,2,2],[4,2,1,1],[2,2,4],[2,1,1,2],[8]]
+        tied = [None,"forward","backward",None,"forward","both","backward",
+                None,"forward","both","both","backward",None,"forward","backward",None]
+        return rhythm, tied
+
+
 
     def get_rhythm(self):
-        self.cf_notes = [ele for ele in self.cf_notes for i in range(2)]
-        return [4] * len(self.cf_notes)
+        rhythm, tied = self._build_measures(self.cf_notes)
+
 
     def get_harmonic_possibilities(self,i,cf_notes):
         if i in self.get_downbeats():
-            poss  = super(FourthSpecies,self).get_consonant_possibilities(cf_notes[i-1])
+            poss  = super(FifthSpecies,self).get_consonant_possibilities(cf_notes[i-1])
         else:
-            poss = super(FourthSpecies,self).get_consonant_possibilities(cf_notes[i])
+            poss = super(FifthSpecies,self).get_consonant_possibilities(cf_notes[i])
         return poss
 
     def _possible_notes(self):
@@ -62,4 +89,3 @@ class FourthSpecies(Counterpoint):
         ctp_rhythm.append(8)
         self.ctp_notes = ctp_draft
         self.melody_rhythm = ctp_rhythm
-
