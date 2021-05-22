@@ -15,77 +15,67 @@ class SecondSpecies(Counterpoint):
     def __init__(self,cf,ctp_position = "above"):
         super(SecondSpecies,self).__init__(cf,ctp_position)
         self.species = "second"
-        self.ERROR_THRESHOLD = 100
-        self.MAX_SEARCH_WIDTH = 3
-
+        self.ERROR_THRESHOLD = 50
+        self.MAX_SEARCH_WIDTH = 6
+        self.ctp.set_rhythm(self.get_rhythm())
+        self.num_notes = sum(len(row) for row in self.get_rhythm())
+        self.ctp.set_ties(self.get_ties())
+        self.search_domain = self._possible_notes()
+        self.ctp.set_melody(self.randomize_ctp_melody())
     """ HELP FUNCTIONS"""
     def get_downbeats(self):
-        indices = list(range(len(self.cf_notes)))
+        indices = list(range(len(self.cf.melody)))
         return indices[::2]
     def get_upbeats(self):
-        indices = list(range(len(self.cf_notes)))
+        indices = list(range(len(self.cf.melody)))
         return indices[1::2]
 
     """ RHYTHMIC RULES """
     def get_rhythm(self):
-        self.cf_notes = [ele for ele in self.cf_notes for i in range(2)]
-        return [4] * len(self.cf_notes)
+        rhythm = [(4,4)]*(len(self.cf.melody)-1)
+        rhythm.append((8,))
+        return rhythm
+
+    def get_ties(self):
+        return [False]*self.num_notes
 
     """ VOICE INDEPENDENCE RULES """
     """ MELODIC RULES """
 
     """ HELP FUNCTIONS FOR INITIALIZING COUNTERPOINT"""
 
-    def get_harmonic_possibilities(self, idx, cf_notes):
-        poss = super(SecondSpecies,self).get_consonant_possibilities(cf_notes[idx])
+    def get_harmonic_possibilities(self, idx, cf_note):
+        poss = super(SecondSpecies,self).get_consonant_possibilities(cf_note)
         upbeats = self.get_upbeats()
         if idx in upbeats:
             if idx != 1:
                 for diss in self.dissonant_intervals:
                     if self.ctp_position == "above":
-                        if cf_notes[idx]+diss in self.scale_pitches:
-                            poss.append(cf_notes[idx]+diss)
+                        if cf_note+diss in self.scale_pitches:
+                            poss.append(cf_note+diss)
                     else:
-                        if cf_notes[idx]-diss in self.scale_pitches:
-                            poss.append(cf_notes[idx]-diss)
+                        if cf_note-diss in self.scale_pitches:
+                            poss.append(cf_note-diss)
         return poss
 
     def _possible_notes(self):
-        poss = [None for elem in self.cf_notes]
-        for i in range(len(self.cf_notes)):
-            if i == 1 or i == 0:
-                poss[i] = self._start_notes()
-            elif i == len(self.cf_notes) - 3:
-                poss[i] = self._penultimate_notes(self.cf_notes[-1])
-            elif i == len(self.cf_notes) - 1 or i == len(self.cf_notes)-2:
-                poss[i] = self._end_notes()
-            else:
-                poss[i] = self.get_harmonic_possibilities(i, self.cf_notes)
+        poss = [None for elem in range(self.num_notes)]
+        i = 0
+        for m in range(len(self.get_rhythm())):
+            for n in range(len(self.get_rhythm()[m])):
+                if m == 0:
+                    # First measure. start notes
+                    if n == 0:
+                        poss[i] = [-1]
+                    else:
+                        poss[i] = self._start_notes()
+                elif m == len(self.get_rhythm()) - 2 and n == 1:
+                    # penultimate note before last measure.
+                    poss[i] = self._penultimate_notes(self.cf.melody[-1])
+                elif m == len(self.get_rhythm())-1:
+                    # Last measure
+                    poss[i] = self._end_notes()
+                else:
+                    poss[i] = self.get_harmonic_possibilities(i, self.cf.melody[m])
+                i += 1
         return poss
-
-    """ INITIALIZING COUNTERPOINT WITH RANDOM VALUES"""
-
-    """def _initialize_ctp2(self):
-        # Expanding the already generated first species results:
-        self.melody_rhythm = self.get_rhythm()
-        extended_cf = [ele for ele in self.cf_notes for i in range(2)]
-        print("expanded cf_notes: ",extended_cf)
-        poss = self._possible_notes2(extended_cf)
-        print("poss: ",poss)
-        ctp_notes = []
-        for p in poss:
-            ctp_notes.append(rm.choice(p))
-        return ctp_notes.copy(), extended_cf, poss"""
-
-    def post_ornaments(self):
-        self.ctp_notes[0] = -1
-        self.ctp_notes[-2] = self.ctp_notes[-1]
-        self.ctp_notes.pop(-1)
-        self.melody_rhythm.pop(-1)
-        self.melody_rhythm[-1] = 8
-
-
-"""cf = Cantus_Firmus("C","major",bar_length = 2)
-cf.generate_cf()
-ctp = SecondSpecies(cf,ctp_position="above")
-ctp.generate_ctp()"""

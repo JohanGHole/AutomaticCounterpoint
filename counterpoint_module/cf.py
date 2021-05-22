@@ -23,8 +23,9 @@ class Cantus_Firmus(m.Melody):
         if melody_rhythm != None:
             self.melody_rhythm = melody_rhythm
         else:
-            self.melody_rhythm = [8]*self.length
+            self.melody_rhythm = [(8,)]*self.length
         self.cf_errors = []
+        self.ties = [False]*self.length
 
     def _start_note(self):
         """
@@ -66,7 +67,7 @@ class Cantus_Firmus(m.Melody):
         Therefore modelled as a uniform distribution over 8 to 12
         :return:
         """
-        random_length = 16 #rm.randint(8,16)
+        random_length = rm.randint(8,16)
         return round(random_length)
 
     def _is_step(self,note,prev_note):

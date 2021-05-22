@@ -82,8 +82,8 @@ class Note:
 
 class Interval:
     perfect_intervals = [Unison, P5, Octave]
-    dissonant_intervals = [m2, M2, P4, m7, M7, Tritone]
-    consonant_intervals = [m3, M3, P5, m6, M6, Octave]
+    dissonant_intervals = [m2, M2, P4, m7, M7, Tritone,Octave+m2,Octave+M2]
+    consonant_intervals = [m3, M3, P5, m6, M6, Octave,Octave+m3,Octave+M3]
     melodic_consonant_intervals = [m2,M2,m3, M3, P4, P5, m6, M6, Octave]
 
     def __init__(self, arg1=None, arg2=None, arg3=None):
@@ -268,7 +268,8 @@ class Scale:
 
 
 class Melody:
-    def __init__(self, key, scale, bar_length, melody_notes=None, melody_rhythm = 8, start=0, voice_range = None):
+    def __init__(self, key, scale, bar_length, melody_notes=None, melody_rhythm = None, ties = False, start=0, voice_range = None):
+        "Search Space"
         self.key = key
         self.scale_name = scale
         self.voice_range = voice_range
@@ -277,19 +278,35 @@ class Melody:
         self.note_resolution = 8
         self.start = start
         self.bar_length = float(bar_length)
-        if melody_notes == None:
-            num_bars = rm.randint(8, 12)
-            mel = [60 for i in range(num_bars)]
-            self.melody = mel
+        if melody_notes == melody_rhythm == None:
+            # Must initialize random melody
+            length = rm.randint(8,16)
+            self.melody = [rm.choice(self.scale_pitches) for i in range(length)]
+            self.melody_rhythm = [(8,)]*length
+        elif melody_notes != None and melody_rhythm == None:
+            length = len(melody_notes)
+            self.melody = melody_notes
+            self.melody_rhythm = self.melody_rhythm = [(8,)]*length
+        elif melody_notes == None and melody_rhythm != None:
+            length = len(melody_rhythm)
+            self.melody = [rm.choice(self.scale_pitches) for i in range(length)]
+            self.melody_rhythm = melody_rhythm
         else:
             self.melody = melody_notes
-        if isinstance(melody_rhythm, int):
-            self.melody_rhythm = [melody_rhythm for elem in self.melody]
-        elif isinstance(melody_rhythm, list):
             self.melody_rhythm = melody_rhythm
+        if ties == False:
+            self.ties = [False]*len(self.melody)
+        else:
+            self.ties = ties
 
+    def set_ties(self,ties):
+        self.ties = ties.copy()
 
+    def set_rhythm(self,rhythm):
+        self.melody_rhythm = rhythm.copy()
 
+    def set_melody(self,melody):
+        self.melody = melody.copy()
 
     def get_end_time(self):
         t = self.start
@@ -340,30 +357,25 @@ class Melody:
 
     """ MIDI SUPPORT """
 
-    def to_instrument(self, instrument, time=None, start = 0):
-        if time == None and start == None:
-            t = self.start
-            time = self.melody_rhythm
-            i = 0
-            for pitch in self.melody:
-                dur = float(time[i]*self.bar_length / float(self.note_resolution))
-                note = Note(pitch, start=t, end=t + dur)
-                note.to_instrument(instrument)
-                t += dur
-                i += 1
-        elif isinstance(time, int):
-            t = start
-            for pitch in self.melody:
-                dur = float(time*self.bar_length / float(self.note_resolution))
-                note = Note(pitch, start=t, end=t + dur)
-                note.to_instrument(instrument)
-                t += dur
-        elif isinstance(time, list) and len(time) == len(self.melody):
-            t = start
-            for i in range(len(self.melody)):
-                dur = float(time[i] * self.bar_length / float(self.note_resolution))
+    def to_instrument(self, instrument, start = 0):
+        i = 0
+        measure = 0
+        t = start
+        while measure < len(self.melody_rhythm):
+            note_duration = 0
+            while note_duration < len(self.melody_rhythm[measure]):
+                dur = self.melody_rhythm[measure][note_duration]
+                duration = float(dur*self.bar_length / float(self.note_resolution))
+                if self.ties[i] == True:
+                    measure += 1
+                    note_duration = 0
+                    dur = self.melody_rhythm[measure][note_duration]
+                    duration += float(dur*self.bar_length / float(self.note_resolution))
+                    i += 1
                 if self.melody[i] != -1:
-
-                    note = Note(self.melody[i], start=t, end=t + dur)
+                    note = Note(self.melody[i],start=t, end=t+duration)
                     note.to_instrument(instrument)
-                t += dur
+                t += duration
+                i += 1
+                note_duration += 1
+            measure += 1

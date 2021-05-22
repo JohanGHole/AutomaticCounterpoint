@@ -30,10 +30,14 @@ def _is_parallel_perfects_on_downbeats(ctp_draft, upper_voice, lower_voice):
     return False
 
 rhythm = [4,6,2,2,2,2,2,6,2,2,2,2,2,2,2,2,2,8,4,4]
+test = [[8]]*8
 
+print("this is a tuple: ",[(8,4)]*8)
+print(sum((8,4)))
 def cf_index(ctp_index):
     # Inputs the cf_index and returns
     print("ctp_index..",sum(rhythm[:ctp_index]))
     return int((sum(rhythm[:ctp_index+1]) / 8))
 
-print(cf_index(1))
+print([(8,8)]*4)
+print(2%2)
