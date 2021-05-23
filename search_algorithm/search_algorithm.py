@@ -80,6 +80,7 @@ def brute_force(ctp):
         penalty = local_error
         errors = ctp_errors
     return penalty, ctp.ctp.melody,errors
+
 def best_first_search(ctp,weighted_idx,tabu_list):
     search_domain = ctp.search_domain
     search_ctp = ctp.ctp.melody.copy()
@@ -129,8 +130,10 @@ def improved_search(ctp):
     searches = 1
     tabu_list = [[]]*len(best_ctp)
     randomize_idx = 1
-    while penalty > ctp.ERROR_THRESHOLD and elapsed_time < ctp.MAX_SEARCH_TIME:
+    penalty_list = []
+    while penalty >= ctp.ERROR_THRESHOLD and elapsed_time < ctp.MAX_SEARCH_TIME:
         penalty, ctp_notes, error_list,weighted_idx = best_first_search(ctp,weighted_idx,tabu_list)
+        penalty_list.append(penalty)
         if penalty == prev_penalty:
             weighted_idx = list(weighted_idx.keys())
             for i in range(randomize_idx):
@@ -149,4 +152,4 @@ def improved_search(ctp):
         elapsed_time = t.time()-start_time
         prev_penalty = penalty
         searches += 1
-    return lowest_penalty, best_ctp,lowest_error
+    return lowest_penalty, best_ctp,lowest_error, penalty_list

@@ -249,6 +249,11 @@ class Constraints:
             if self.short_cf.index(max(self.short_cf)) == climax_measure_idx[i]:
                 return False
         return True
+    def _is_leading_tone_properly_resolved(self,ctp_draft):
+        if abs(ctp_draft[-1] - ctp_draft[-2]) not in [m2,M2]:
+            return False
+        else:
+            return True
 
     """ SECOND SPECIES """
     def _is_motivic_repetitions(self,ctp_draft,idx):
@@ -301,6 +306,9 @@ class Constraints:
                 penalty += 50
             if not self._is_unique_climax(ctp_draft):
                 self.ctp_errors.append("No unique climax or at same position as other voices!")
+                penalty += 100
+            if not self._is_leading_tone_properly_resolved(ctp_draft):
+                self.ctp_errors.append("leading tone not properly resolved!")
                 penalty += 100
         if SPECIES[self.species] >= 2:
             for i in range(len(ctp_draft)):
@@ -376,9 +384,17 @@ class Constraints:
         return valid
 
     def _is_unisons_between_terminals(self, ctp):
-        if SPECIES[self.species] in [3,5]:
-            return 0
-        return ctp[1:-1].count(self.cf_tonic)
+        num = 0
+        for i in range(1,len(ctp)-1):
+            if ctp[i] == self.cf_tonic:
+                if SPECIES[self.species] in [3,5]:
+                    if i in self.measure_idx:
+                        num += 1
+                    else:
+                        num += 0
+                else:
+                    num += 1
+        return num
 
     """ SECOND SPECIES"""
     def _is_parallel_perfects_on_downbeats(self,ctp_draft, upper_voice, lower_voice):
@@ -493,7 +509,7 @@ class Constraints:
         prev_note = ctp_draft[idx-1]
         next_note = ctp_draft[idx+1]
         if abs(next_note-current_note) <= M2 and abs(current_note-prev_note) <= M2:
-            if SPECIES[self.species] in [5]:
+            if SPECIES[self.species] in [3,5]:
                 return True
             if sign(next_note-current_note) == sign(next_note-current_note):
                 return True
@@ -585,8 +601,8 @@ class Constraints:
         outline_intervals = []
         not_allowed_intervals = [Tritone]
         # mellom ytterkant og inn + endring innad
-        dir = [sign(ctp_draft[i + 1] - ctp_draft[i]) for i in range(len(ctp_draft) - 1)]
-        for i in range(len(dir) - 1):
+        dir = [sign(ctp_draft[i + 1] - ctp_draft[i]) for i in range(1,len(ctp_draft) - 1)]
+        for i in range(1,len(dir) - 1):
             if dir[i] != dir[i + 1]:
                 outline_idx.append(i + 1)
         outline_idx.append(len(ctp_draft) - 1)

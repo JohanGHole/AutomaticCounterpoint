@@ -63,11 +63,11 @@ class Cantus_Firmus(m.Melody):
 
     def _generate_length(self):
         """
-        Generates the number of bars for the cantus firmus. Length between 8 and 16 bars, with 12 being most common.
-        Therefore modelled as a uniform distribution over 8 to 12
+        Generates the number of bars for the cantus firmus. Length between 8 and 13 bars, with 12 being most common.
+        Therefore modelled as a uniform distribution over 8 to 14
         :return:
         """
-        random_length = rm.randint(8,16)
+        random_length = rm.randint(8,14)
         return round(random_length)
 
     def _is_step(self,note,prev_note):

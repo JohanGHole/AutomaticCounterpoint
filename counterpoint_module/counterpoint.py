@@ -57,9 +57,15 @@ class Counterpoint:
     def _start_notes(self):
         cf_tonic = self.cf.start_note
         if self.ctp_position == "above":
-            return [cf_tonic, cf_tonic + P5, cf_tonic + Octave]
+            if SPECIES[self.species] == 1:
+                return [cf_tonic, cf_tonic + P5, cf_tonic + Octave]
+            else:
+                return [cf_tonic+P5,cf_tonic + Octave]
         else:
-            return [cf_tonic - Octave, cf_tonic]
+            if SPECIES[self.species] == 1:
+                return [cf_tonic - Octave, cf_tonic]
+            else:
+                return [cf_tonic - Octave]
 
     def _end_notes(self):
         cf_tonic = self.cf.start_note
@@ -107,9 +113,6 @@ class Counterpoint:
             poss.append(self.get_consonant_possibilities(self.cf_notes[i]))
         return poss
 
-    def post_ornaments(self):
-        return
-
     def randomize_ctp_melody(self):
         ctp_melody = []
         i = 0
@@ -134,13 +137,11 @@ class Counterpoint:
 
         self.ctp.set_melody(self.randomize_ctp_melody())
         self.ctp_errors = []
-        self.error, best_ctp,self.ctp_errors = Search_Algorithm.improved_search(self)
+        self.error, best_ctp,self.ctp_errors,penalty_list = Search_Algorithm.improved_search(self)
         self.ctp.set_melody(best_ctp)
-        global_score = self.error
-        print("error score:",self.error)
-        print("ctp errors: ",self.ctp_errors)
-        if post_ornaments:
-            self.post_ornaments()
+        print("error: ",self.error)
+        print("error list: ",self.ctp_errors)
+        return penalty_list
 
     def construct_ctp_melody(self,start = 0):
         self.ctp_melody = m.Melody(self.key,self.scale,self.cf.bar_length,melody_notes=self.ctp_notes,melody_rhythm = self.melody_rhythm,start = start,voice_range = self.voice_range)
