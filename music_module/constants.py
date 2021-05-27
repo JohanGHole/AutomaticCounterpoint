@@ -48,9 +48,6 @@ P8 = Octave = 12
 NAMED_SCALES = {
     "major": (2, 2, 1, 2, 2, 2, 1),
     "minor": (2, 1, 2, 2, 1, 2, 2),
-    "melodic_minor": (2, 1, 2, 2, 2, 2, 1),
-    "harmonic_minor": (2, 1, 2, 2, 1, 3, 1),
-    "chromatic": (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1)
 }
 
 SPECIES = {
@@ -60,17 +57,15 @@ SPECIES = {
     "fourth": 4,
     "fifth": 5,
 }
-SPECIES_RHYTHMS = {
-    "first": 8,
-    "second": 4,
-    "third": 2,
-    "fourth": [8,4],
-    "fifth": [8,4,2,6]
-}
+
 RANGES_NAMES = {
-    0: "bass",
-    1: "tenor",
-    2: "alto",
-    3: "soprano"
+    "bass": 0,
+    "tenor": 1,
+    "alto": 2,
+    "soprano": 3
 }
-consonant_melodic_intervals = [m2,M2,m3, M3, P4, P5, m6, Octave]
+MELODIC_CONSONANT_INTERVALS = [m2,M2,m3, M3, P4, P5, m6, Octave]
+MELODIC_INTERVALS = [Unison,m2,M2,m3,M3,P4,P5,m6,P8,-m2,-M2,-m3,-M3,-P4,-P5,-P8]
+HARMONIC_DISSONANT_INTERVALS = [m2,M2,P4,M7,m7,P8+m2,P8+M2]
+HARMONIC_CONSONANCES = [m3,M3,P5,m6,M6,P8,P8+m3,P8+M3]
+PERFECT_INTERVALS = [P5,P8]

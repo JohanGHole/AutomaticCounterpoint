@@ -4,35 +4,25 @@ class FifthSpecies(Counterpoint):
         super(FifthSpecies, self).__init__(cf, ctp_position)
         self.species = "fifth"
         self.ERROR_THRESHOLD = 100
-        self.MAX_SEARCH_WIDTH = 3
-        self.ctp.set_rhythm(self.get_rhythm())
-        self.rhythm = self.ctp.melody_rhythm.copy()
+        self.melody.set_rhythm(self.get_rhythm())
+        self.rhythm = self.melody.get_rhythm()
         self.num_notes = sum(len(row) for row in self.rhythm)
-        self.ctp.set_ties(self.get_ties())
+        self.melody.set_ties(self.get_ties())
         self.search_domain = self._possible_notes()
-        self.ctp.set_melody(self.randomize_ctp_melody())
-
-    """ HELP FUNCTIONS"""
-
-    def get_downbeats(self):
-        indices = list(range(len(self.cf.melody)))
-        return indices[::2]
-
-    def get_upbeats(self):
-        indices = list(range(len(self.cf.melody)))
-        return indices[1::2]
+        self.melody.set_melody(self.randomize_ctp_melody())
 
     """ RHYTHMIC RULES """
 
     def get_rhythm(self):
         rhythm = []
-        measure_rhythms = [(2,2,2,2),(4,2,2),(2,2,4),(4,4),(2,1,1,2,2),(2,1,1,4),(4,2,1,1),(2,2,2,1,1),(2,1,1,2,2)]
-        rhytmic_weights = [100,50,75,25,10,5,5,5,5]
-        for measures in range(len(self.cf.melody)-1):
+        measure_rhythms = [(2,2,2,2),(4,2,2),(2,2,4),(4,4),
+                           (2,1,1,2,2),(2,1,1,4),(4,2,1,1),(2,2,2,1,1),(2,1,1,2,2)]
+        rhythmic_weights = [100,50,50,25,10,5,5,5,5]
+        for measures in range(len(self.cf.pitches)-1):
             if measures == 0:
                 rhythm.append((4,4))
             else:
-                rhythm.append(rm.choices(measure_rhythms,rhytmic_weights)[0])
+                rhythm.append(rm.choices(measure_rhythms,rhythmic_weights)[0])
         rhythm.append((8,))
         return rhythm
 
@@ -60,8 +50,6 @@ class FifthSpecies(Counterpoint):
     """ HELP FUNCTIONS FOR INITIALIZING COUNTERPOINT"""
 
     def get_harmonic_possibilities(self, m,n, cf_note):
-        measure = m
-        note_number = n
         add_diss = False
         if self.rhythm[m][n] == 1:
             add_diss = True
@@ -69,7 +57,7 @@ class FifthSpecies(Counterpoint):
             add_diss = True
         poss = super(FifthSpecies, self).get_consonant_possibilities(cf_note)
         if add_diss:
-            for diss in self.dissonant_intervals:
+            for diss in HARMONIC_DISSONANT_INTERVALS:
                 if self.ctp_position == "above":
                     if cf_note + diss in self.scale_pitches:
                         poss.append(cf_note + diss)
@@ -91,11 +79,11 @@ class FifthSpecies(Counterpoint):
                         poss[i] = self._start_notes()
                 elif m == len(self.rhythm) - 2 and n == len(self.rhythm[m])-1:
                     # penultimate note before last measure.
-                    poss[i] = self._penultimate_notes(self.cf.melody[-1])
+                    poss[i] = self._penultimate_notes(self.cf.pitches[-1])
                 elif m == len(self.rhythm) - 1:
                     # Last measure
                     poss[i] = self._end_notes()
                 else:
-                    poss[i] = self.get_harmonic_possibilities(m,n, self.cf.melody[m])
+                    poss[i] = self.get_harmonic_possibilities(m,n, self.cf.pitches[m])
                 i += 1
         return poss

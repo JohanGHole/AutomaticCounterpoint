@@ -16,23 +16,22 @@ class SecondSpecies(Counterpoint):
         super(SecondSpecies,self).__init__(cf,ctp_position)
         self.species = "second"
         self.ERROR_THRESHOLD = 50
-        self.MAX_SEARCH_WIDTH = 6
-        self.ctp.set_rhythm(self.get_rhythm())
+        self.melody.set_rhythm(self.get_rhythm())
         self.num_notes = sum(len(row) for row in self.get_rhythm())
-        self.ctp.set_ties(self.get_ties())
+        self.melody.set_ties(self.get_ties())
         self.search_domain = self._possible_notes()
-        self.ctp.set_melody(self.randomize_ctp_melody())
+        self.melody.set_melody(self.randomize_ctp_melody())
     """ HELP FUNCTIONS"""
     def get_downbeats(self):
-        indices = list(range(len(self.cf.melody)))
+        indices = list(range(len(self.cf.pitches)))*2
         return indices[::2]
     def get_upbeats(self):
-        indices = list(range(len(self.cf.melody)))
+        indices = list(range(len(self.cf.pitches)))*2
         return indices[1::2]
 
     """ RHYTHMIC RULES """
     def get_rhythm(self):
-        rhythm = [(4,4)]*(len(self.cf.melody)-1)
+        rhythm = [(4,4)]*(len(self.cf.pitches)-1)
         rhythm.append((8,))
         return rhythm
 
@@ -49,7 +48,7 @@ class SecondSpecies(Counterpoint):
         upbeats = self.get_upbeats()
         if idx in upbeats:
             if idx != 1:
-                for diss in self.dissonant_intervals:
+                for diss in HARMONIC_DISSONANT_INTERVALS:
                     if self.ctp_position == "above":
                         if cf_note+diss in self.scale_pitches:
                             poss.append(cf_note+diss)
@@ -71,11 +70,11 @@ class SecondSpecies(Counterpoint):
                         poss[i] = self._start_notes()
                 elif m == len(self.get_rhythm()) - 2 and n == 1:
                     # penultimate note before last measure.
-                    poss[i] = self._penultimate_notes(self.cf.melody[-1])
+                    poss[i] = self._penultimate_notes(self.cf.pitches[-1])
                 elif m == len(self.get_rhythm())-1:
                     # Last measure
                     poss[i] = self._end_notes()
                 else:
-                    poss[i] = self.get_harmonic_possibilities(i, self.cf.melody[m])
+                    poss[i] = self.get_harmonic_possibilities(i, self.cf.pitches[m])
                 i += 1
         return poss

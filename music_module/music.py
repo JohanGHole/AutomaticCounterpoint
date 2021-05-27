@@ -268,7 +268,7 @@ class Scale:
 
 
 class Melody:
-    def __init__(self, key, scale, bar_length, melody_notes=None, melody_rhythm = None, ties = False, start=0, voice_range = None):
+    def __init__(self, key, scale, bar_length, melody_notes=None, melody_rhythm = None, ties = None, start=0, voice_range = None):
         "Search Space"
         self.key = key
         self.scale_name = scale
@@ -278,82 +278,39 @@ class Melody:
         self.note_resolution = 8
         self.start = start
         self.bar_length = float(bar_length)
-        if melody_notes == melody_rhythm == None:
-            # Must initialize random melody
-            length = rm.randint(8,16)
-            self.melody = [rm.choice(self.scale_pitches) for i in range(length)]
-            self.melody_rhythm = [(8,)]*length
-        elif melody_notes != None and melody_rhythm == None:
-            length = len(melody_notes)
-            self.melody = melody_notes
-            self.melody_rhythm = self.melody_rhythm = [(8,)]*length
-        elif melody_notes == None and melody_rhythm != None:
-            length = len(melody_rhythm)
-            self.melody = [rm.choice(self.scale_pitches) for i in range(length)]
-            self.melody_rhythm = melody_rhythm
+
+        """Music Representation"""
+        self.pitches = melody_notes
+        self.rhythm = melody_rhythm
+        self.ties = ties
+        if self.pitches != None:
+            self.search_domain = [self.scale_pitches for notes in self.pitches]
         else:
-            self.melody = melody_notes
-            self.melody_rhythm = melody_rhythm
-        if ties == False:
-            self.ties = [False]*len(self.melody)
-        else:
-            self.ties = ties
+            self.search_domain = [self.scale_pitches]
 
     def set_ties(self,ties):
         self.ties = ties.copy()
 
     def set_rhythm(self,rhythm):
-        self.melody_rhythm = rhythm.copy()
+        self.rhythm = rhythm.copy()
 
     def set_melody(self,melody):
-        self.melody = melody.copy()
+        self.pitches = melody.copy()
+
+    def get_ties(self):
+        return self.ties.copy()
+
+    def get_rhythm(self):
+        return self.rhythm.copy()
+
+    def get_melody(self):
+        return self.pitches.copy()
 
     def get_end_time(self):
         t = self.start
-        for elem in self.melody_rhythm:
+        for elem in self.rhythm:
             t += elem
         return t*self.bar_length / float(self.note_resolution)
-        "ANALYSIS AND AUGMENTATION"
-
-    def get_note_durations(self):
-        dur = []
-        for notes in self.melody:
-            dur.append(notes.get_duration())
-        return dur
-
-    def diatonic_inversion(self, in_place=False):
-        notes = self.melody
-        inverted_melody = [notes[0]]
-        # Might have to change the range for the new melody. It can easily go out of range given the limited voice range
-        for i in range(len(notes) - 1):
-            interval = self.scale_pitches.index(notes[i + 1]) - self.scale_pitches.index(notes[i])
-            idx = self.scale_pitches.index(inverted_melody[i]) - interval
-            if idx < 0:
-                print("ERROR: inversion out of bounds")
-                pass
-            new_note = self.scale_pitches[idx]
-            inverted_melody.append(new_note)
-
-        if in_place:
-            self.melody = inverted_melody
-        else:
-            return Melody(self.key, self.scale_name, self.bar_length, melody_notes=inverted_melody, melody_rhythm=self.melody_rhythm,
-                          start=self.start, voice_range=self.voice_range)
-
-    def retrograde(self, in_place=False):
-        timeScale = self.melody_rhythm
-        retrograded = []
-        retrograded_timeScale = []
-        for i in range(len(self.melody) - 1, -1, -1):
-            retrograded.append(self.melody[i])
-            retrograded_timeScale.append(timeScale[i])
-        if in_place:
-            self.melody = retrograded
-            self.melody_rhythm = retrograded_timeScale
-        else:
-            return Melody(self.key, self.scale_name, self.bar_length, melody_notes=retrograded,
-                          melody_rhythm=retrograded_timeScale,
-                          start=self.start, voice_range=self.voice_range)
 
     """ MIDI SUPPORT """
 
@@ -361,19 +318,19 @@ class Melody:
         i = 0
         measure = 0
         t = start
-        while measure < len(self.melody_rhythm):
+        while measure < len(self.rhythm):
             note_duration = 0
-            while note_duration < len(self.melody_rhythm[measure]):
-                dur = self.melody_rhythm[measure][note_duration]
+            while note_duration < len(self.rhythm[measure]):
+                dur = self.rhythm[measure][note_duration]
                 duration = float(dur*self.bar_length / float(self.note_resolution))
                 if self.ties[i] == True:
                     measure += 1
                     note_duration = 0
-                    dur = self.melody_rhythm[measure][note_duration]
+                    dur = self.rhythm[measure][note_duration]
                     duration += float(dur*self.bar_length / float(self.note_resolution))
                     i += 1
-                if self.melody[i] != -1:
-                    note = Note(self.melody[i],start=t, end=t+duration)
+                if self.pitches[i] != -1:
+                    note = Note(self.pitches[i],start=t, end=t+duration)
                     note.to_instrument(instrument)
                 t += duration
                 i += 1
