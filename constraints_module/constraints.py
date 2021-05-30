@@ -221,7 +221,7 @@ class Constraints:
         return False
 
     def _is_within_range_of_a_tenth(self, ctp_draft):
-        if max(ctp_draft) - min(ctp_draft[1:]) >= Octave + M3:
+        if max(ctp_draft) - min(ctp_draft[1:]) > Octave + M3:
             return False
         else:
             return True
@@ -553,6 +553,7 @@ class Constraints:
                     self.ctp_errors.append("eight notes not properly handled!")
                     penalty += 100
         if SPECIES[self.species] in [4,5]:
+            self.ctp_errors.append("tied notes not properly handled!")
             penalty += self._tied_note_properly_resolved(cf_notes,ctp_draft)
 
         return penalty

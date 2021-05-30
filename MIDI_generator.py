@@ -50,7 +50,7 @@ class Midi_Generator:
         self.cf_range_name = RANGES.index(cf_range)
         self.species = species
         self.cf = Cantus_Firmus(key,scale_name,bar_length,cf_notes,cf_rhythm,start = 0, voice_range = cf_range)
-        self.loaded_instruments = [None, None]
+        self.loaded_instruments = []
         if species == "first":
             self.ctp = FirstSpecies(self.cf,ctp_position = ctp_position)
         elif species == "second":
@@ -62,6 +62,7 @@ class Midi_Generator:
         elif species == "fifth":
             self.ctp = FifthSpecies(self.cf,ctp_position = ctp_position)
         self.ctp.generate_ctp()
+        print(self.ctp.search_domain)
     def set_instrument(self,name):
         if isinstance(name,list):
             self.instruments = name
@@ -89,7 +90,7 @@ class Midi_Generator:
 #large_test_four_voices(RANGES[TENOR])
 
 
-#main()
+main()
 
 def result_generation():
     inst = ["Acoustic Grand Piano"] * 4
@@ -166,4 +167,4 @@ def result_analysis():
     plt.ylabel('penalty')
     plt.xlabel("iteration nr")
     plt.show()
-result_analysis()
+#result_analysis()

@@ -1,3 +1,4 @@
+import random as rm
 test = [62, 60, 57, 49, 50]
 print([elem % 12 for elem in test])
 poss = [2,4]

@@ -17,7 +17,7 @@ class FifthSpecies(Counterpoint):
         rhythm = []
         measure_rhythms = [(2,2,2,2),(4,2,2),(2,2,4),(4,4),
                            (2,1,1,2,2),(2,1,1,4),(4,2,1,1),(2,2,2,1,1),(2,1,1,2,2)]
-        rhythmic_weights = [100,50,50,25,10,5,5,5,5]
+        rhythmic_weights = [75,75,75,75,10,5,5,5,5]
         for measures in range(len(self.cf.pitches)-1):
             if measures == 0:
                 rhythm.append((4,4))
